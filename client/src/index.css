@@ -1,5 +1,49 @@
-@import "tailwindcss";
+@import 'tailwindcss';
+
+/*
+ * Design tokens. Tailwind v4 reads @theme and auto-generates utilities:
+ * --color-background -> bg-background, --color-accent -> bg-accent/text-accent, etc.
+ * Naming follows the shadcn/ui convention (bg-background, text-foreground,
+ * border-border) so class names read naturally instead of "bg-bg"/"text-text".
+ */
+@theme {
+  --color-background: #0d1117; /* page background */
+  --color-surface: #161b22; /* navbar / secondary surfaces */
+  --color-card: #1e293b; /* card background */
+  --color-border: #30363d;
+
+  --color-accent: #3b82f6;
+  --color-accent-hover: #2563eb;
+  --color-success: #22c55e;
+  --color-warning: #f59e0b;
+  --color-error: #ef4444;
+
+  --color-foreground: #f8fafc; /* primary text */
+  --color-muted: #94a3b8; /* secondary text */
+
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+
+  --animate-fade-in: fade-in 0.35s ease-out;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+html {
+  font-family: var(--font-sans);
+  color-scheme: dark;
+}
 
 body {
   margin: 0;
+  background: var(--color-background);
+  color: var(--color-foreground);
 }
