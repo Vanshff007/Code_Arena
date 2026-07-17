@@ -8,6 +8,7 @@ import logger from './utils/logger.js';
 import { notFound, errorHandler } from './middleware/errorHandler.js';
 import healthRoutes from './routes/health.routes.js';
 import authRoutes from './routes/auth.routes.js';
+import problemRoutes from './routes/problem.routes.js';
 
 const app = express();
 
@@ -28,7 +29,7 @@ app.use(morgan('combined', { stream: logger.morganStream }));
 // --- Routes ---
 app.use('/api/health', healthRoutes);
 app.use('/api/auth', authRoutes);
-// Step 6 adds: app.use('/api/problems', problemRoutes);
+app.use('/api/problems', problemRoutes);
 
 // --- Error handling (must be registered last) ---
 app.use(notFound);

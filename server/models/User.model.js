@@ -28,6 +28,11 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: '', // frontend falls back to a generated avatar when empty
     },
+    role: {
+      type: String,
+      enum: ['user', 'admin'],
+      default: 'user', // promoted only via the scripts/setAdminRole.js CLI, never over HTTP
+    },
     rating: {
       type: Number,
       default: 1000, // starting ELO; matchmaking (later step) adjusts this after each battle
