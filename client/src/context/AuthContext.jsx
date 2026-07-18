@@ -44,8 +44,16 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
+  // rating/wins/losses only get fetched at login - they'd otherwise go
+  // stale the moment a battle changes them. Dashboard calls this on every
+  // mount (e.g. returning from a battle) to pick up the latest numbers.
+  const refreshUser = async () => {
+    const res = await getCurrentUser();
+    setUser(res.data.user);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,5 +1,6 @@
 const tones = {
   success: 'bg-success/10 text-success',
+  warning: 'bg-warning/10 text-warning',
   error: 'bg-error/10 text-error',
   muted: 'bg-white/5 text-muted',
 };

@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { Swords, LayoutDashboard, LogOut } from 'lucide-react';
+import { Swords, LayoutDashboard, User, LogOut } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import Button from './ui/Button';
 
@@ -28,6 +28,12 @@ function Navbar() {
                 <span className="flex items-center gap-1.5">
                   <LayoutDashboard className="size-4" />
                   Dashboard
+                </span>
+              </NavLink>
+              <NavLink to={`/profile/${user.username}`} className={linkClass}>
+                <span className="flex items-center gap-1.5">
+                  <User className="size-4" />
+                  Profile
                 </span>
               </NavLink>
               <Button variant="ghost" onClick={logout} className="ml-1">
