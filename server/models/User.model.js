@@ -40,6 +40,30 @@ const userSchema = new mongoose.Schema(
     wins: { type: Number, default: 0 },
     losses: { type: Number, default: 0 },
     totalBattles: { type: Number, default: 0 },
+    // LeetCode connection is entirely optional - a user with no username
+    // here just never gets a LeetCode-seeded skill profile; everything else
+    // in the app works unaffected. See services/leetcode.service.js for
+    // what's actually fetchable from LeetCode's public (unofficial) API.
+    leetcode: {
+      username: { type: String, default: null },
+      connectedAt: { type: Date, default: null },
+      lastSyncedAt: { type: Date, default: null },
+      syncStatus: { type: String, enum: ['idle', 'synced', 'failed'], default: 'idle' },
+      syncError: { type: String, default: null },
+      stats: {
+        totalSolved: { type: Number, default: 0 },
+        easySolved: { type: Number, default: 0 },
+        mediumSolved: { type: Number, default: 0 },
+        hardSolved: { type: Number, default: 0 },
+        contestRating: { type: Number, default: null },
+        contestRanking: { type: Number, default: null },
+      },
+      // Topic -> count, derived from a limited window of recent accepted
+      // submissions (LeetCode's public API doesn't expose a full solved
+      // history for other users) - a seed signal only, see
+      // services/leetcode.service.js and skillAnalyzer.service.js.
+      topicCounts: { type: Map, of: Number, default: {} },
+    },
   },
   { timestamps: true } // adds createdAt / updatedAt automatically
 );
