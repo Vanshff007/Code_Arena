@@ -12,6 +12,7 @@ import BattleRoom from './pages/BattleRoom';
 import Leaderboard from './pages/Leaderboard';
 import MatchHistory from './pages/MatchHistory';
 import Profile from './pages/Profile';
+import SkillDashboard from './pages/SkillDashboard';
 import NotFound from './pages/NotFound';
 
 function App() {
@@ -83,6 +84,14 @@ function App() {
           element={
             <ProtectedRoute>
               <Profile />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/skills"
+          element={
+            <ProtectedRoute>
+              <SkillDashboard />
             </ProtectedRoute>
           }
         />

@@ -44,8 +44,11 @@ function broadcastRoomState(roomCode) {
 // --- Private rooms (Create Room / Join Room / Invite Friends) ---
 
 export function createRoom(socket) {
+  logger.info(`[Room] room:create received from ${socket.user.username} (${socket.id})`);
+
   const existing = findRoomByUserId(socket.user._id.toString());
   if (existing) {
+    logger.info(`[Room] ${socket.user.username} rejected - already in a room`);
     return socket.emit('room:error', { message: 'You are already in a room' });
   }
 
@@ -58,6 +61,7 @@ export function createRoom(socket) {
     ready: false,
   };
   createRoomState(roomCode, hostPlayer);
+  logger.info(`[Room] Room created: ${roomCode} (host: ${socket.user.username})`);
 
   socket.join(roomCode);
   socket.emit('room:created', { roomCode });
@@ -65,14 +69,19 @@ export function createRoom(socket) {
 }
 
 export function joinRoom(socket, roomCode) {
+  logger.info(`[Room] room:join received from ${socket.user.username} for room ${roomCode}`);
+
   const room = rooms.get(roomCode);
   if (!room) {
+    logger.info(`[Room] Join rejected - room ${roomCode} not found`);
     return socket.emit('room:error', { message: 'Room not found' });
   }
   if (room.players.length >= 2) {
+    logger.info(`[Room] Join rejected - room ${roomCode} is full`);
     return socket.emit('room:error', { message: 'Room is already full' });
   }
   if (room.players.some((p) => p.userId === socket.user._id.toString())) {
+    logger.info(`[Room] Join rejected - ${socket.user.username} already in room ${roomCode}`);
     return socket.emit('room:error', { message: 'You are already in this room' });
   }
 
@@ -83,6 +92,7 @@ export function joinRoom(socket, roomCode) {
     rating: socket.user.rating,
     ready: false,
   });
+  logger.info(`[Room] ${socket.user.username} joined room ${roomCode}. Players: ${room.players.length}/2`);
 
   socket.join(roomCode);
   broadcastRoomState(roomCode);
@@ -96,9 +106,11 @@ export function setReady(socket, roomCode) {
   if (!player) return socket.emit('room:error', { message: 'You are not in this room' });
 
   player.ready = true;
+  logger.info(`[Room] ${socket.user.username} ready in room ${roomCode}`);
   broadcastRoomState(roomCode);
 
   if (room.players.length === 2 && room.players.every((p) => p.ready)) {
+    logger.info(`[Room] Both players ready in room ${roomCode} - starting countdown`);
     startCountdown(roomCode);
   }
 }
@@ -106,10 +118,16 @@ export function setReady(socket, roomCode) {
 // --- Random matchmaking ---
 
 export function joinQueue(socket) {
+  logger.info(`[Matchmaking] joinQueue received from ${socket.user.username} (${socket.id})`);
+
   if (findRoomByUserId(socket.user._id.toString())) {
+    logger.info(`[Matchmaking] ${socket.user.username} rejected - already in a battle`);
     return socket.emit('room:error', { message: 'You are already in a battle' });
   }
-  if (matchmakingQueue.some((q) => q.userId === socket.user._id.toString())) return;
+  if (matchmakingQueue.some((q) => q.userId === socket.user._id.toString())) {
+    logger.info(`[Matchmaking] ${socket.user.username} already queued - ignoring duplicate join`);
+    return;
+  }
 
   matchmakingQueue.push({
     socketId: socket.id,
@@ -117,18 +135,31 @@ export function joinQueue(socket) {
     username: socket.user.username,
     rating: socket.user.rating,
   });
+  logger.info(`[Matchmaking] ${socket.user.username} queued. Queue size: ${matchmakingQueue.length}`);
   socket.emit('matchmaking:waiting');
 
   if (matchmakingQueue.length >= 2) {
     const [a, b] = matchmakingQueue.splice(0, 2);
+    logger.info(`[Matchmaking] Opponent found: ${a.username} vs ${b.username}`);
+
     const roomCode = generateRoomCode();
     const room = createRoomState(roomCode, { ...a, ready: true });
     room.players.push({ ...b, ready: true });
+    logger.info(`[Matchmaking] Room created: ${roomCode}`);
+    logger.info(`[Matchmaking] Players assigned to room ${roomCode}: ${a.username}, ${b.username}`);
 
     const io = getIO();
-    io.sockets.sockets.get(a.socketId)?.join(roomCode);
-    io.sockets.sockets.get(b.socketId)?.join(roomCode);
+    const socketA = io.sockets.sockets.get(a.socketId);
+    const socketB = io.sockets.sockets.get(b.socketId);
+    if (!socketA || !socketB) {
+      logger.error(
+        `[Matchmaking] One or both sockets missing at pairing time (a=${!!socketA}, b=${!!socketB}) for room ${roomCode}`
+      );
+    }
+    socketA?.join(roomCode);
+    socketB?.join(roomCode);
     io.to(roomCode).emit('matchmaking:found', { roomCode });
+    logger.info(`[Matchmaking] matchmaking:found emitted to room ${roomCode}`);
 
     startCountdown(roomCode);
   }
@@ -136,7 +167,10 @@ export function joinQueue(socket) {
 
 export function leaveQueue(socket) {
   const index = matchmakingQueue.findIndex((q) => q.socketId === socket.id);
-  if (index !== -1) matchmakingQueue.splice(index, 1);
+  if (index !== -1) {
+    logger.info(`[Matchmaking] ${socket.user.username} left the queue`);
+    matchmakingQueue.splice(index, 1);
+  }
 }
 
 // --- Battle lifecycle ---
@@ -145,6 +179,7 @@ function startCountdown(roomCode) {
   const room = rooms.get(roomCode);
   if (!room) return;
 
+  logger.info(`[Room] Countdown started for room ${roomCode}`);
   room.status = 'countdown';
   broadcastRoomState(roomCode);
 
@@ -155,6 +190,7 @@ function startCountdown(roomCode) {
     secondsLeft -= 1;
     if (secondsLeft < 0) {
       clearInterval(room.countdownInterval);
+      logger.info(`[Room] Countdown finished for room ${roomCode} - starting battle`);
       startBattle(roomCode);
     }
   }, 1000);
@@ -162,10 +198,15 @@ function startCountdown(roomCode) {
 
 async function startBattle(roomCode) {
   const room = rooms.get(roomCode);
-  if (!room) return;
+  if (!room) {
+    logger.error(`[Battle] startBattle called for unknown room ${roomCode}`);
+    return;
+  }
 
   try {
+    logger.info(`[Battle] Selecting problem for room ${roomCode}`);
     const problem = await pickRandomProblem();
+    logger.info(`[Battle] Problem selected: "${problem.title}" (${problem._id}) for room ${roomCode}`);
 
     const match = await Match.create({
       problem: problem._id,
@@ -173,6 +214,7 @@ async function startBattle(roomCode) {
       durationMs: room.durationMs,
       startedAt: new Date(),
     });
+    logger.info(`[Battle] Match document created: ${match._id} for room ${roomCode}`);
 
     room.status = 'in_progress';
     room.problem = problem;
@@ -191,6 +233,7 @@ async function startBattle(roomCode) {
       startedAt: room.startedAt,
       players: room.players.map(toPublicPlayer),
     });
+    logger.info(`[Battle] battle:start emitted to room ${roomCode}`);
 
     room.timerInterval = setInterval(() => {
       const remainingMs = room.durationMs - (Date.now() - room.startedAt);
@@ -202,7 +245,7 @@ async function startBattle(roomCode) {
       }
     }, 1000);
   } catch (err) {
-    logger.error(`Failed to start battle for room ${roomCode}: ${err.message}`);
+    logger.error(`[Battle] Failed to start battle for room ${roomCode}: ${err.message}`);
     getIO().to(roomCode).emit('room:error', { message: 'Could not start the battle. Please try again.' });
   }
 }

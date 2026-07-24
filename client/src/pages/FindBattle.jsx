@@ -16,18 +16,38 @@ function FindBattle() {
   useEffect(() => {
     if (!socket) return;
 
-    const onFound = ({ roomCode }) => navigate(`/battle/${roomCode}`);
-    const onCreated = ({ roomCode }) => navigate(`/battle/${roomCode}`);
+    // Connection-stage visibility - a socket that never authenticates
+    // (expired/invalid token) fails silently otherwise: emits just queue
+    // forever with no error surfaced anywhere.
+    const onConnect = () => console.log('[Matchmaking] Socket connected:', socket.id);
+    const onConnectError = (err) => console.error('[Matchmaking] Socket connect_error:', err.message);
+
+    const onWaiting = () => console.log('[Matchmaking] matchmaking:waiting received - in queue');
+    const onFound = ({ roomCode }) => {
+      console.log('[Matchmaking] matchmaking:found received, room:', roomCode);
+      navigate(`/battle/${roomCode}`);
+    };
+    const onCreated = ({ roomCode }) => {
+      console.log('[Matchmaking] room:created received, room:', roomCode);
+      navigate(`/battle/${roomCode}`);
+    };
     const onError = ({ message }) => {
+      console.error('[Matchmaking] room:error received:', message);
       setError(message);
       setSearching(false);
     };
 
+    socket.on('connect', onConnect);
+    socket.on('connect_error', onConnectError);
+    socket.on('matchmaking:waiting', onWaiting);
     socket.on('matchmaking:found', onFound);
     socket.on('room:created', onCreated);
     socket.on('room:error', onError);
 
     return () => {
+      socket.off('connect', onConnect);
+      socket.off('connect_error', onConnectError);
+      socket.off('matchmaking:waiting', onWaiting);
       socket.off('matchmaking:found', onFound);
       socket.off('room:created', onCreated);
       socket.off('room:error', onError);
@@ -35,6 +55,7 @@ function FindBattle() {
   }, [socket, navigate]);
 
   const startMatchmaking = () => {
+    console.log('[Matchmaking] Find match button clicked - emitting matchmaking:join');
     setError('');
     setSearching(true);
     socket.emit('matchmaking:join');

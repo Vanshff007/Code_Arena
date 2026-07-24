@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import Editor from '@monaco-editor/react';
 import { Play, Send } from 'lucide-react';
@@ -24,9 +24,16 @@ function ProblemSolve() {
   const [running, setRunning] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  // Captured once the problem loads - lets the backend compute "time taken"
+  // for the Skill Analyzer / AI Coach without any server-side session state.
+  const startedAtRef = useRef(Date.now());
+
   useEffect(() => {
     getProblemById(id)
-      .then((res) => setProblem(res.data.problem))
+      .then((res) => {
+        setProblem(res.data.problem);
+        startedAtRef.current = Date.now();
+      })
       .catch(() => setLoadError('Failed to load problem.'));
   }, [id]);
 
@@ -54,7 +61,7 @@ function ProblemSolve() {
     setOutput(null);
     setVerdict(null);
     try {
-      const res = await submitCode({ language, code, problemId: id });
+      const res = await submitCode({ language, code, problemId: id, startedAt: startedAtRef.current });
       setVerdict(res.data);
     } catch (err) {
       setVerdict({ verdict: 'Error', passedCount: 0, totalCount: 0, compileError: getErrorMessage(err) });
@@ -195,6 +202,24 @@ function ProblemSolve() {
                 <p>Input: {verdict.failedCase.input}</p>
                 <p>Expected: {verdict.failedCase.expectedOutput}</p>
                 <p>Got: {verdict.failedCase.actualOutput}</p>
+              </div>
+            )}
+            {verdict.scoreAwarded != null && (
+              <p className="mt-2 text-sm text-foreground">
+                +{verdict.scoreAwarded} points
+                {verdict.xpAwarded?.length > 0 && (
+                  <span className="text-muted">
+                    {' '}
+                    &middot; {verdict.xpAwarded.map((x) => `+${x.xpGained} ${x.topic} XP`).join(', ')}
+                  </span>
+                )}
+              </p>
+            )}
+            {verdict.coaching?.length > 0 && (
+              <div className="mt-3 border-t border-border pt-3 text-sm text-muted">
+                {verdict.coaching.map((line, i) => (
+                  <p key={i}>{line}</p>
+                ))}
               </div>
             )}
           </Card>

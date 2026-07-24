@@ -11,6 +11,7 @@ import {
   BarChart3,
   History,
   User,
+  Radar,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { getProblems } from '../services/problemService';
@@ -61,6 +62,7 @@ function Dashboard() {
     { label: 'Leaderboard', icon: BarChart3, onClick: () => navigate('/leaderboard') },
     { label: 'Match History', icon: History, onClick: () => navigate('/history') },
     { label: 'Profile', icon: User, onClick: () => navigate(`/profile/${user.username}`) },
+    { label: 'Skill Dashboard', icon: Radar, onClick: () => navigate('/skills') },
   ];
 
   return (

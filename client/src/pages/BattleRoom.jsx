@@ -36,6 +36,10 @@ function BattleRoom() {
   const [roomError, setRoomError] = useState('');
   const [copied, setCopied] = useState(false);
 
+  // Captured when the battle actually starts (or resumes) - lets the
+  // backend compute "time taken" for the Skill Analyzer / AI Coach.
+  const startedAtRef = useRef(Date.now());
+
   const [messages, setMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
   const [opponentTyping, setOpponentTyping] = useState(false);
@@ -57,6 +61,7 @@ function BattleRoom() {
 
     const onRoomState = (data) => {
       if (data.roomCode !== roomCode) return;
+      console.log('[Battle] room:state received', data);
       setPlayers(data.players);
       setPhase((prev) => (prev === 'waiting' || prev === 'countdown' ? data.status : prev));
     };
@@ -66,17 +71,24 @@ function BattleRoom() {
     };
     const onBattleStart = (data) => {
       if (data.roomCode !== roomCode) return;
+      console.log('[Battle] battle:start received', data);
       setPhase('in_progress');
       setProblem(data.problem);
       setPlayers(data.players);
       setRemainingMs(data.durationMs);
+      startedAtRef.current = Date.now();
     };
     const onResume = (data) => {
       if (data.roomCode !== roomCode) return;
+      console.log('[Battle] battle:resume received', data);
       setPhase('in_progress');
       setProblem(data.problem);
       setPlayers(data.players);
       setRemainingMs(data.remainingMs);
+      // Reconstruct the original start time from how much time has already
+      // elapsed, so a page refresh mid-battle doesn't reset the "time taken"
+      // clock back to zero.
+      startedAtRef.current = Date.now() - (data.durationMs - data.remainingMs);
     };
     const onTimerSync = ({ remainingMs }) => setRemainingMs(remainingMs);
     const onOpponentSubmitted = (data) => setOpponentUpdate(data);
@@ -92,7 +104,10 @@ function BattleRoom() {
       clearTimeout(typingTimeout.current);
       typingTimeout.current = setTimeout(() => setOpponentTyping(false), 2000);
     };
-    const onRoomError = ({ message }) => setRoomError(message);
+    const onRoomError = ({ message }) => {
+      console.error('[Battle] room:error received:', message);
+      setRoomError(message);
+    };
 
     socket.on('room:state', onRoomState);
     socket.on('room:countdown', onCountdown);
@@ -165,7 +180,13 @@ function BattleRoom() {
     setSubmitting(true);
     setOutput(null);
     try {
-      const res = await submitCode({ language, code, problemId: problem._id, roomCode });
+      const res = await submitCode({
+        language,
+        code,
+        problemId: problem._id,
+        roomCode,
+        startedAt: startedAtRef.current,
+      });
       setVerdict(res.data);
     } catch (err) {
       setVerdict({ verdict: 'Error', passedCount: 0, totalCount: 0, compileError: getErrorMessage(err) });
