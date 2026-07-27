@@ -7,6 +7,19 @@ import os from 'os';
 // on more concurrent load than the host can actually take.
 const MAX_CONCURRENT = Math.max(2, os.cpus().length);
 
+// An unbounded queue just delays the resource exhaustion problem instead of
+// solving it - a burst of submissions would otherwise queue indefinitely in
+// memory rather than being told to back off. Past this many waiting jobs,
+// reject immediately instead of adding to the wait.
+const MAX_QUEUE_LENGTH = 20;
+
+export class JudgeQueueFullError extends Error {
+  constructor() {
+    super('Judge is at capacity. Please try again shortly.');
+    this.name = 'JudgeQueueFullError';
+  }
+}
+
 let running = 0;
 const queue = [];
 
@@ -27,8 +40,10 @@ export function withConcurrencyLimit(task) {
 
     if (running < MAX_CONCURRENT) {
       run();
-    } else {
+    } else if (queue.length < MAX_QUEUE_LENGTH) {
       queue.push(run);
+    } else {
+      reject(new JudgeQueueFullError());
     }
   });
 }

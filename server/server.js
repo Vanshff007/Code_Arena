@@ -13,7 +13,7 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: env.clientUrl,
+    origin: env.clientUrls,
     credentials: true,
   },
 });
@@ -33,5 +33,12 @@ start();
 // Log unhandled rejections instead of letting the process die silently.
 process.on('unhandledRejection', (err) => {
   logger.error(`Unhandled Rejection: ${err.message}`);
+  server.close(() => process.exit(1));
+});
+
+// A synchronous throw with no catch anywhere would otherwise crash the
+// process with no log line at all - mirror the same graceful-shutdown path.
+process.on('uncaughtException', (err) => {
+  logger.error(`Uncaught Exception: ${err.stack || err.message}`);
   server.close(() => process.exit(1));
 });

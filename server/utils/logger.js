@@ -1,5 +1,16 @@
 import winston from 'winston';
+import 'winston-daily-rotate-file';
 import env from '../config/env.js';
+
+// Plain winston.transports.File grows forever - on a long-running VPS that
+// eventually fills the disk. Daily rotation with a retention cap keeps disk
+// usage bounded without needing an external log shipper.
+const rotateOptions = {
+  datePattern: 'YYYY-MM-DD',
+  maxSize: '20m',
+  maxFiles: '14d',
+  zippedArchive: true,
+};
 
 const logger = winston.createLogger({
   level: env.nodeEnv === 'production' ? 'info' : 'debug',
@@ -14,8 +25,15 @@ const logger = winston.createLogger({
     new winston.transports.Console({
       format: winston.format.combine(winston.format.colorize(), winston.format.simple()),
     }),
-    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
-    new winston.transports.File({ filename: 'logs/combined.log' }),
+    new winston.transports.DailyRotateFile({
+      ...rotateOptions,
+      filename: 'logs/error-%DATE%.log',
+      level: 'error',
+    }),
+    new winston.transports.DailyRotateFile({
+      ...rotateOptions,
+      filename: 'logs/combined-%DATE%.log',
+    }),
   ],
 });
 

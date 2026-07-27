@@ -1,5 +1,6 @@
 import Problem from '../models/Problem.model.js';
 import { runCustomInput, judgeSubmission } from '../services/execution/judge.js';
+import { JudgeQueueFullError } from '../services/execution/concurrencyLimiter.js';
 import { handleBattleSubmission } from '../sockets/roomManager.js';
 import { trackSubmission } from '../services/performanceTracker.service.js';
 import logger from '../utils/logger.js';
@@ -12,6 +13,9 @@ export const runCode = async (req, res, next) => {
     const result = await runCustomInput({ language, code, input });
     return res.status(200).json({ success: true, data: result });
   } catch (err) {
+    if (err instanceof JudgeQueueFullError) {
+      return res.status(503).json({ success: false, message: err.message });
+    }
     next(err);
   }
 };
@@ -74,6 +78,9 @@ export const submitCode = async (req, res, next) => {
   } catch (err) {
     if (err.name === 'CastError') {
       return res.status(400).json({ success: false, message: 'Invalid problem id' });
+    }
+    if (err instanceof JudgeQueueFullError) {
+      return res.status(503).json({ success: false, message: err.message });
     }
     next(err);
   }
