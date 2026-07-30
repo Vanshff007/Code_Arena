@@ -9,7 +9,7 @@ function NotFound() {
       <p className="text-sm text-muted">This page doesn't exist.</p>
       <Link
         to="/"
-        className="mt-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:-translate-y-0.5 hover:bg-accent-hover"
+        className="mt-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-background transition-all duration-200 hover:-translate-y-0.5 hover:bg-accent-hover"
       >
         Back home
       </Link>

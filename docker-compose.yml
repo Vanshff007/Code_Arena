@@ -1,0 +1,18 @@
+services:
+  # MongoDB only. The Node app runs natively on the host (via PM2) rather
+  # than in a container - see DEPLOYMENT.md for why: the code-execution
+  # engine bind-mounts real host paths into sandbox containers, and having
+  # the app itself inside a container would require those paths to line up
+  # identically on both sides of the Docker socket, an extra failure mode
+  # this deployment avoids by not introducing it.
+  mongo:
+    image: mongo:7
+    container_name: codearena-mongo
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:27017:27017'
+    volumes:
+      - mongo-data:/data/db
+
+volumes:
+  mongo-data:

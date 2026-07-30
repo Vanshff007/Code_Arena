@@ -38,9 +38,9 @@ function Problems() {
 
         {problems?.map((p) => (
           <Link key={p._id} to={`/practice/${p._id}`}>
-            <Card hover className="flex items-center justify-between">
-              <div>
-                <p className="font-medium text-foreground">{p.title}</p>
+            <Card hover className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <p className="font-medium text-foreground break-words">{p.title}</p>
                 {p.tags?.length > 0 && (
                   <div className="mt-1.5 flex flex-wrap gap-1.5">
                     {p.tags.map((t) => (
@@ -51,7 +51,9 @@ function Problems() {
                   </div>
                 )}
               </div>
-              <Badge tone={DIFFICULTY_TONE[p.difficulty]}>{p.difficulty}</Badge>
+              <Badge tone={DIFFICULTY_TONE[p.difficulty]} className="self-start sm:self-auto">
+                {p.difficulty}
+              </Badge>
             </Card>
           </Link>
         ))}

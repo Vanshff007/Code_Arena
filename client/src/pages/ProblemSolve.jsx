@@ -10,9 +10,11 @@ import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
 import Spinner from '../components/ui/Spinner';
+import useMediaQuery from '../hooks/useMediaQuery';
 
 function ProblemSolve() {
   const { id } = useParams();
+  const isMobile = useMediaQuery('(max-width: 639px)');
   const [problem, setProblem] = useState(null);
   const [loadError, setLoadError] = useState('');
 
@@ -86,8 +88,8 @@ function ProblemSolve() {
     <main className="animate-fade-in mx-auto grid max-w-6xl gap-6 px-6 py-8 lg:grid-cols-2">
       {/* Problem description */}
       <div className="flex flex-col gap-4">
-        <div className="flex items-center gap-3">
-          <h1 className="text-xl font-bold text-foreground">{problem.title}</h1>
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="text-xl font-bold text-foreground break-words">{problem.title}</h1>
           <Badge tone={DIFFICULTY_TONE[problem.difficulty]}>{problem.difficulty}</Badge>
         </div>
 
@@ -122,7 +124,7 @@ function ProblemSolve() {
 
       {/* Editor + run/submit */}
       <div className="flex flex-col gap-3">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <select
             value={language}
             onChange={(e) => handleLanguageChange(e.target.value)}
@@ -147,7 +149,7 @@ function ProblemSolve() {
 
         <Card className="overflow-hidden p-0">
           <Editor
-            height="360px"
+            height={isMobile ? '260px' : '360px'}
             language={MONACO_LANGUAGE[language]}
             value={code}
             onChange={(value) => setCode(value ?? '')}

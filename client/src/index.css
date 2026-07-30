@@ -7,23 +7,35 @@
  * border-border) so class names read naturally instead of "bg-bg"/"text-text".
  */
 @theme {
-  --color-background: #0d1117; /* page background */
-  --color-surface: #161b22; /* navbar / secondary surfaces */
-  --color-card: #1e293b; /* card background */
-  --color-border: #30363d;
+  --color-background: #f7f1e6; /* warm cream page background */
+  --color-surface: #efe4d1; /* navbar / secondary surfaces - a shade deeper */
+  --color-card: #fffcf6; /* card background - lightest, so cards pop off the cream page */
+  --color-border: #e1d2b8;
 
-  --color-accent: #3b82f6;
-  --color-accent-hover: #2563eb;
-  --color-success: #22c55e;
-  --color-warning: #f59e0b;
-  --color-error: #ef4444;
+  --color-accent: #6f4e37; /* coffee brown */
+  --color-accent-hover: #59402c;
+  --color-success: #3f7d4f;
+  --color-warning: #b8842e;
+  --color-error: #b3462c;
 
-  --color-foreground: #f8fafc; /* primary text */
-  --color-muted: #94a3b8; /* secondary text */
+  --color-foreground: #3a2a1c; /* primary text - dark espresso, not pure black */
+  --color-muted: #8a7360; /* secondary text - warm brown-gray */
 
   --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'Fira Code', ui-monospace, 'Courier New', monospace;
 
   --animate-fade-in: fade-in 0.35s ease-out;
+  --animate-float: float 6s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
 }
 
 @keyframes fade-in {
@@ -39,11 +51,15 @@
 
 html {
   font-family: var(--font-sans);
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 body {
   margin: 0;
   background: var(--color-background);
   color: var(--color-foreground);
+  /* Safety net, not a fix for any specific layout - a stray fixed-width
+     element on some future page shouldn't be able to force a page-wide
+     horizontal scrollbar on a narrow phone. */
+  overflow-x: hidden;
 }

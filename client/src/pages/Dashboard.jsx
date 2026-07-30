@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import {
   TrendingUp,
   Trophy,
@@ -19,6 +20,7 @@ import { getMyMatches } from '../services/matchService';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import Spinner from '../components/ui/Spinner';
+import useCountUp from '../hooks/useCountUp';
 
 const stats = [
   { key: 'rating', label: 'Rating', icon: TrendingUp },
@@ -28,6 +30,24 @@ const stats = [
 ];
 
 const resultTone = { Win: 'success', Loss: 'error', Draw: 'muted' };
+
+// Counts up to `value` instead of snapping to it - a stat tile whose own
+// hook call has to live in its own component since `stats` is mapped in a
+// loop (hooks can't be called conditionally/per-iteration in the parent).
+function StatTile({ label, icon: Icon, value }) {
+  const rounded = useCountUp(value);
+  return (
+    <Card hover className="flex flex-col gap-3">
+      <div className="flex size-9 items-center justify-center rounded-lg bg-accent/10">
+        <Icon className="size-4.5 text-accent" />
+      </div>
+      <div>
+        <p className="text-xs font-medium uppercase tracking-wide text-muted">{label}</p>
+        <motion.p className="mt-0.5 text-2xl font-bold text-foreground">{rounded}</motion.p>
+      </div>
+    </Card>
+  );
+}
 
 function Dashboard() {
   const { user, logout, refreshUser } = useAuth();
@@ -72,40 +92,37 @@ function Dashboard() {
           <h1 className="text-2xl font-bold text-foreground">Welcome, {user.username}</h1>
           <p className="mt-1 text-sm text-muted">Here's where your battles stand.</p>
         </div>
-        <button
+        <motion.button
+          whileHover={{ y: -1 }}
+          whileTap={{ scale: 0.95 }}
           onClick={logout}
           className="rounded-lg border border-border px-3 py-2 text-sm text-muted transition-colors hover:border-accent hover:text-foreground"
         >
           Logout
-        </button>
+        </motion.button>
       </div>
 
       <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        {stats.map(({ key, label, icon: Icon }) => (
-          <Card key={key} hover className="flex flex-col gap-3">
-            <div className="flex size-9 items-center justify-center rounded-lg bg-accent/10">
-              <Icon className="size-4.5 text-accent" />
-            </div>
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-muted">{label}</p>
-              <p className="mt-0.5 text-2xl font-bold text-foreground">{user[key]}</p>
-            </div>
-          </Card>
+        {stats.map(({ key, label, icon }) => (
+          <StatTile key={key} label={label} icon={icon} value={user[key]} />
         ))}
       </div>
 
       <h2 className="mt-10 mb-4 text-sm font-semibold uppercase tracking-wide text-muted">Quick actions</h2>
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
         {quickActions.map(({ label, icon: Icon, onClick }) => (
-          <button
+          <motion.button
             key={label}
+            whileHover={{ y: -3, scale: 1.02 }}
+            whileTap={{ scale: 0.97 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 25 }}
             onClick={onClick}
             className="group flex flex-col items-center gap-2 rounded-xl border border-border bg-card p-5
-              text-center transition-all duration-200 hover:-translate-y-0.5 hover:border-accent/40 hover:shadow-lg"
+              text-center transition-shadow duration-200 hover:border-accent/40 hover:shadow-lg"
           >
             <Icon className="size-5 text-accent" />
             <span className="text-sm font-medium text-foreground">{label}</span>
-          </button>
+          </motion.button>
         ))}
       </div>
 
@@ -123,11 +140,13 @@ function Dashboard() {
       ) : (
         <div className="flex flex-col gap-3">
           {recentMatches.map((m) => (
-            <Card key={m.matchId} className="flex items-center justify-between">
-              <span className="text-sm text-foreground">
+            <Card key={m.matchId} className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <span className="text-sm text-foreground break-words">
                 vs {m.opponent} &middot; {m.problem}
               </span>
-              <Badge tone={resultTone[m.result]}>{m.result}</Badge>
+              <Badge tone={resultTone[m.result]} className="self-start sm:self-auto">
+                {m.result}
+              </Badge>
             </Card>
           ))}
           <Link to="/history" className="text-center text-sm text-accent hover:underline">

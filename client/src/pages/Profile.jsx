@@ -163,7 +163,7 @@ function Profile() {
               )}
             </div>
             {user.leetcode.stats && (
-              <div className="grid grid-cols-3 gap-3 text-center sm:grid-cols-4">
+              <div className="grid grid-cols-2 gap-3 text-center sm:grid-cols-4">
                 <div>
                   <p className="text-xs text-muted">Solved</p>
                   <p className="font-semibold text-foreground">{user.leetcode.stats.totalSolved}</p>

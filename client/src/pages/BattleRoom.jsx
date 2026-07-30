@@ -4,6 +4,7 @@ import Editor from '@monaco-editor/react';
 import { Play, Send, Copy, Check, WifiOff, Wifi, Trophy } from 'lucide-react';
 import { useSocket } from '../hooks/useSocket';
 import { useAuth } from '../hooks/useAuth';
+import useMediaQuery from '../hooks/useMediaQuery';
 import { runCode, submitCode } from '../services/executionService';
 import { STARTER_CODE, MONACO_LANGUAGE, DIFFICULTY_TONE } from '../utils/starterCode';
 import { getErrorMessage } from '../utils/getErrorMessage';
@@ -24,6 +25,10 @@ function BattleRoom() {
   const socket = useSocket();
   const { user } = useAuth();
   const navigate = useNavigate();
+  // Matches Tailwind's `sm` breakpoint - the editor doesn't need as much
+  // vertical space competing with the problem panel stacked above it on a
+  // phone-sized viewport.
+  const isMobile = useMediaQuery('(max-width: 639px)');
 
   const [phase, setPhase] = useState('waiting'); // waiting -> countdown -> in_progress -> completed
   const [players, setPlayers] = useState([]);
@@ -254,7 +259,7 @@ function BattleRoom() {
     return (
       <main className="animate-fade-in flex min-h-[calc(100vh-64px)] flex-col items-center justify-center gap-4">
         <p className="text-sm text-muted">Battle starting in</p>
-        <p className="text-7xl font-extrabold text-accent">{countdown}</p>
+        <p className="text-6xl font-extrabold text-accent sm:text-7xl">{countdown}</p>
       </main>
     );
   }
@@ -274,7 +279,7 @@ function BattleRoom() {
 
         <Card className="mt-6 flex flex-col gap-3 text-left">
           {[you, opp].map((r) => (
-            <div key={r.userId} className="flex items-center justify-between">
+            <div key={r.userId} className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
               <span className="font-medium text-foreground">
                 {r.username} {r.userId === user._id && '(you)'}
               </span>
@@ -290,7 +295,7 @@ function BattleRoom() {
 
         <Link
           to="/dashboard"
-          className="mt-6 inline-block rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:-translate-y-0.5 hover:bg-accent-hover"
+          className="mt-6 inline-block rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-background transition-all duration-200 hover:-translate-y-0.5 hover:bg-accent-hover"
         >
           Back to Dashboard
         </Link>
@@ -310,17 +315,17 @@ function BattleRoom() {
   return (
     <main className="animate-fade-in mx-auto grid max-w-6xl gap-6 px-6 py-6 lg:grid-cols-2">
       <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <h1 className="text-xl font-bold text-foreground">{problem.title}</h1>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="text-xl font-bold text-foreground break-words">{problem.title}</h1>
             <Badge tone={DIFFICULTY_TONE[problem.difficulty]}>{problem.difficulty}</Badge>
           </div>
           <span className="font-mono text-lg font-semibold text-foreground">{formatMs(remainingMs)}</span>
         </div>
 
         {/* Opponent status */}
-        <Card className="flex items-center justify-between py-3">
-          <div className="flex items-center gap-2">
+        <Card className="flex flex-wrap items-center justify-between gap-2 py-3">
+          <div className="flex flex-wrap items-center gap-2">
             {opponentOnline ? (
               <Wifi className="size-4 text-success" />
             ) : (
@@ -390,7 +395,7 @@ function BattleRoom() {
       </div>
 
       <div className="flex flex-col gap-3">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <select
             value={language}
             onChange={(e) => handleLanguageChange(e.target.value)}
@@ -415,7 +420,7 @@ function BattleRoom() {
 
         <Card className="overflow-hidden p-0">
           <Editor
-            height="320px"
+            height={isMobile ? '240px' : '320px'}
             language={MONACO_LANGUAGE[language]}
             value={code}
             onChange={handleCodeChange}

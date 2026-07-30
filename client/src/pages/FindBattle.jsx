@@ -107,7 +107,7 @@ function FindBattle() {
         </Card>
       ) : (
         <div className="mt-6 flex flex-col gap-4">
-          <Card hover className="flex items-center justify-between gap-4">
+          <Card hover className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
               <Shuffle className="size-5 shrink-0 text-accent" />
               <div>
@@ -115,10 +115,12 @@ function FindBattle() {
                 <p className="text-sm text-muted">Get paired with the next available player</p>
               </div>
             </div>
-            <Button onClick={startMatchmaking}>Find match</Button>
+            <Button onClick={startMatchmaking} className="w-full sm:w-auto">
+              Find match
+            </Button>
           </Card>
 
-          <Card hover className="flex items-center justify-between gap-4">
+          <Card hover className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
               <Swords className="size-5 shrink-0 text-accent" />
               <div>
@@ -126,7 +128,7 @@ function FindBattle() {
                 <p className="text-sm text-muted">Get a code to invite a friend</p>
               </div>
             </div>
-            <Button variant="secondary" onClick={createRoom}>
+            <Button variant="secondary" onClick={createRoom} className="w-full sm:w-auto">
               Create
             </Button>
           </Card>

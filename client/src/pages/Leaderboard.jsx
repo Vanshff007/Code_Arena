@@ -35,41 +35,47 @@ function Leaderboard() {
 
       {rows?.length > 0 && (
         <Card className="mt-6 overflow-hidden p-0">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted">
-                <th className="px-4 py-3">Rank</th>
-                <th className="px-4 py-3">Player</th>
-                <th className="px-4 py-3 text-right">Rating</th>
-                <th className="px-4 py-3 text-right">Wins</th>
-                <th className="px-4 py-3 text-right">Win rate</th>
-                <th className="px-4 py-3 text-right">Battles</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr
-                  key={r.username}
-                  className={`border-b border-border last:border-0 ${
-                    r.username === user.username ? 'bg-accent/5' : ''
-                  }`}
-                >
-                  <td className="px-4 py-3 font-medium text-foreground">
-                    {r.rank <= 3 ? <Trophy className="inline size-4 text-warning" /> : r.rank}
-                  </td>
-                  <td className="px-4 py-3">
-                    <Link to={`/profile/${r.username}`} className="text-foreground hover:text-accent">
-                      {r.username}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 text-right font-semibold text-foreground">{r.rating}</td>
-                  <td className="px-4 py-3 text-right text-muted">{r.wins}</td>
-                  <td className="px-4 py-3 text-right text-muted">{r.winRate}%</td>
-                  <td className="px-4 py-3 text-right text-muted">{r.totalBattles}</td>
+          {/* 6 columns don't fit a narrow phone width no matter how the card
+              itself is sized - scope the scroll to the table specifically
+              (rather than the whole page) so the rest of the layout stays
+              put and only this needs a sideways swipe. */}
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[480px] text-sm">
+              <thead>
+                <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted">
+                  <th className="px-4 py-3">Rank</th>
+                  <th className="px-4 py-3">Player</th>
+                  <th className="px-4 py-3 text-right">Rating</th>
+                  <th className="px-4 py-3 text-right">Wins</th>
+                  <th className="px-4 py-3 text-right">Win rate</th>
+                  <th className="px-4 py-3 text-right">Battles</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {rows.map((r) => (
+                  <tr
+                    key={r.username}
+                    className={`border-b border-border last:border-0 ${
+                      r.username === user.username ? 'bg-accent/5' : ''
+                    }`}
+                  >
+                    <td className="px-4 py-3 font-medium text-foreground">
+                      {r.rank <= 3 ? <Trophy className="inline size-4 text-warning" /> : r.rank}
+                    </td>
+                    <td className="px-4 py-3">
+                      <Link to={`/profile/${r.username}`} className="text-foreground hover:text-accent">
+                        {r.username}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-3 text-right font-semibold text-foreground">{r.rating}</td>
+                    <td className="px-4 py-3 text-right text-muted">{r.wins}</td>
+                    <td className="px-4 py-3 text-right text-muted">{r.winRate}%</td>
+                    <td className="px-4 py-3 text-right text-muted">{r.totalBattles}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </Card>
       )}
     </main>

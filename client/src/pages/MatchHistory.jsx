@@ -44,9 +44,9 @@ function MatchHistory() {
 
       <div className="mt-6 flex flex-col gap-3">
         {matches?.map((m) => (
-          <Card key={m.matchId} className="flex items-center justify-between">
-            <div>
-              <p className="font-medium text-foreground">
+          <Card key={m.matchId} className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <p className="font-medium text-foreground break-words">
                 vs {m.opponent} &middot; {m.problem}
               </p>
               <p className="mt-1 text-sm text-muted">
@@ -54,7 +54,7 @@ function MatchHistory() {
                 {new Date(m.endedAt).toLocaleDateString()}
               </p>
             </div>
-            <div className="flex flex-col items-end gap-1">
+            <div className="flex items-center gap-2 sm:flex-col sm:items-end sm:gap-1">
               <Badge tone={resultTone[m.result]}>{m.result}</Badge>
               <span className={`text-xs ${m.ratingChange >= 0 ? 'text-success' : 'text-error'}`}>
                 {m.ratingChange >= 0 ? '+' : ''}
