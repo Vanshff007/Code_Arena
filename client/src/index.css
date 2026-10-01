@@ -29,6 +29,43 @@
   --radius-ctl: 6px;
 }
 
+/*
+ * Dark theme: same roles, night values. Applied when the player picks dark
+ * (data-theme="dark" on <html>) or, with no choice saved, when the OS is in
+ * dark mode. Player colors are lifted so they stay readable on dark panels.
+ */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --color-paper: #13151c;
+  --color-panel: #1b1e28;
+  --color-sunk: #0e1016;
+  --color-rule: #2e3342;
+  --color-ink: #e6e8ee;
+  --color-muted: #9aa1b3;
+  --color-p1: #5d76ff;
+  --color-p1-deep: #4560f0;
+  --color-p2: #ff4f6d;
+  --color-ok: #36c98a;
+  --color-warn: #eba43a;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --color-paper: #13151c;
+    --color-panel: #1b1e28;
+    --color-sunk: #0e1016;
+    --color-rule: #2e3342;
+    --color-ink: #e6e8ee;
+    --color-muted: #9aa1b3;
+    --color-p1: #5d76ff;
+    --color-p1-deep: #4560f0;
+    --color-p2: #ff4f6d;
+    --color-ok: #36c98a;
+    --color-warn: #eba43a;
+  }
+}
+
 @layer base {
   html {
     background: var(--color-paper);

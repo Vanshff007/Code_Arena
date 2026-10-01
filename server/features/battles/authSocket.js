@@ -1,26 +1,18 @@
-import jwt from 'jsonwebtoken';
-import env from '../../core/config/env.js';
-import User from '../auth/User.model.js';
+import { tokenFromHeaders, userFromToken } from '../auth/session.js';
 
-// Socket.io equivalent of the `protect` REST middleware - verifies the JWT
-// sent during the handshake and attaches the authenticated user to the
-// socket, so every event handler can trust socket.user without re-checking.
+// Socket.io equivalent of the `protect` REST middleware. Browsers send the
+// session cookie with the handshake (withCredentials); API clients and
+// tests may pass { auth: { token } } instead. Attaches socket.user.
 export async function authSocket(socket, next) {
   try {
-    const token = socket.handshake.auth?.token;
-    if (!token) {
-      return next(new Error('Not authorized, no token provided'));
-    }
-
-    const decoded = jwt.verify(token, env.jwtSecret);
-    const user = await User.findById(decoded.id);
-    if (!user) {
-      return next(new Error('Not authorized, user no longer exists'));
-    }
-
+    const token = socket.handshake.auth?.token || tokenFromHeaders(socket.handshake.headers);
+    const user = await userFromToken(token);
+    if (!user) return next(new Error('Not authorized, session invalid or expired'));
     socket.user = user;
+    // Readable from io.fetchSockets() (e.g. to disconnect a revoked user).
+    socket.data.userId = user._id.toString();
     next();
-  } catch (err) {
-    next(new Error('Not authorized, token invalid or expired'));
+  } catch {
+    next(new Error('Not authorized'));
   }
 }

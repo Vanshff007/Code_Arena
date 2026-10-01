@@ -4,7 +4,7 @@ import { validateSignature } from '../execution/harness/index.js';
 // Optional on both create and update: a problem with a signature is
 // function-style (LeetCode format), one without is a full-program problem.
 const signatureRule = body('signature')
-  .optional()
+  .optional({ values: 'null' })
   .custom((sig) => {
     const errors = validateSignature(sig);
     if (errors.length) throw new Error(errors.join('; '));
@@ -63,4 +63,35 @@ export const updateProblemValidation = [
   body('tags').optional().isArray().withMessage('Tags must be an array of strings'),
   signatureRule,
   outputOrderRule,
+];
+
+const LANGUAGES = ['cpp', 'java', 'python'];
+
+// Reference solution used to prove the test cases are right.
+const referenceSolutionRules = (required) => [
+  (required ? body('referenceSolution') : body('referenceSolution').optional())
+    .isObject()
+    .withMessage('A reference solution is required'),
+  body('referenceSolution.language')
+    .if(body('referenceSolution').exists())
+    .isIn(LANGUAGES)
+    .withMessage(`Reference language must be one of: ${LANGUAGES.join(', ')}`),
+  body('referenceSolution.code')
+    .if(body('referenceSolution').exists())
+    .isString()
+    .notEmpty()
+    .withMessage('Reference solution code is required'),
+];
+
+const editorialRule = body('editorial').optional().isObject().withMessage('Editorial must be an object');
+
+createProblemValidation.push(...referenceSolutionRules(true), editorialRule);
+updateProblemValidation.push(...referenceSolutionRules(false), editorialRule);
+
+// POST /api/problems/check
+export const checkProblemValidation = [
+  body('problem').isObject().withMessage('A problem draft is required'),
+  body('problem.publicTestCases').isArray({ min: 1 }).withMessage('At least one public test case is required'),
+  body('problemId').optional().isMongoId(),
+  ...referenceSolutionRules(true),
 ];

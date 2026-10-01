@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from 'vitest';
 vi.mock('../../shared/api', () => ({ default: { get: vi.fn(async () => ({ data: 'ok' })) } }));
 
 import api from '../../shared/api';
-import { getLeaderboard } from './leaderboardService';
+import { getLeaderboard, getSeasons, getSeasonLeaderboard } from './leaderboardService';
 import { ratingBarPercent, gapToNext } from './ladder';
 
 const rows = [
@@ -40,5 +40,14 @@ describe('gapToNext', () => {
   it('is null for the leader or a player not listed', () => {
     expect(gapToNext(rows, 'top')).toBeNull();
     expect(gapToNext(rows, 'ghost')).toBeNull();
+  });
+});
+
+describe('season service', () => {
+  it('fetches seasons and one season', async () => {
+    await getSeasons();
+    expect(api.get).toHaveBeenCalledWith('/leaderboard/seasons');
+    await getSeasonLeaderboard('2026-10');
+    expect(api.get).toHaveBeenCalledWith('/leaderboard/seasons/2026-10');
   });
 });

@@ -4,7 +4,15 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#e8eaef" />
+    <meta name="theme-color" content="#e8eaef" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#13151c" media="(prefers-color-scheme: dark)" />
+    <script>
+      // Apply the saved theme before first paint, so dark mode never flashes light.
+      try {
+        var t = localStorage.getItem('codearena_theme');
+        if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+      } catch (e) {}
+    </script>
     <meta name="description" content="Real-time 1v1 coding battles. Two players, one problem, first accepted answer wins." />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

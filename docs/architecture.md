@@ -35,14 +35,18 @@ server/
 ├── core/                # shared by all features
 │   ├── config/          # env.js (validated env), db.js
 │   ├── middleware/      # errorHandler, rateLimiters, validate
-│   ├── utils/logger.js  # Winston
+│   ├── utils/           # logger.js (Winston), cookies.js
+│   ├── io.js            # shared Socket.io instance
+│   ├── socketLimits.js  # per-socket event rate limits
+│   ├── presence.js      # which users are online (socket ids per user)
 │   └── testSetup.js     # Vitest setup (test database)
 └── features/
-    ├── auth/            # users, JWT, protect/isAdmin, make-admin CLI
-    ├── problems/        # problem bank, seed script
+    ├── auth/            # users, cookie sessions, protect/isAdmin, make-admin CLI
+    ├── problems/        # problem bank, editorials, admin editor API, seed script
     ├── execution/       # Docker judge (engine/, images/), run/submit API
-    ├── battles/         # sockets, rooms, matchmaking, ELO, match history
-    ├── leaderboard/
+    ├── battles/         # sockets, rooms, matchmaking, ELO, history, replays, spectators, rematch
+    ├── friends/         # friend requests, online status, challenges
+    ├── leaderboard/     # all-time and monthly seasons
     ├── profiles/
     ├── skills/          # skill scores, XP, recommendations, coach
     ├── leetcode/
@@ -52,7 +56,8 @@ server/
 ### Boot
 
 `server/server.js` creates an `http.Server`, attaches Socket.io to it, connects
-to MongoDB, and then listens. Express and Socket.io share one port.
+to MongoDB, restores in-progress battles from `ActiveRoom`
+(`restoreActiveBattles`), and then listens. Express and Socket.io share one port.
 
 `server/core/config/env.js` loads `.env` and stops the process when
 `MONGO_URI` or `JWT_SECRET` is missing, or when `JWT_SECRET` is shorter than
@@ -69,6 +74,15 @@ to MongoDB, and then listens. Express and Socket.io share one port.
 7. `apiLimiter` on `/api`
 8. Feature routes
 9. `notFound`, then `errorHandler`
+
+### Sessions
+
+- Login and register set an httpOnly `ca_token` cookie (`SameSite=Lax`,
+  `Secure` in production). The web app and API must be on the same site.
+- The JWT holds `{ id, tv }`. `tv` must equal `User.tokenVersion`; log out
+  on all devices and a password change increase it, so older tokens stop
+  working. Log out on all devices also disconnects the user's sockets.
+- `protect` and the socket auth read the cookie first, then a Bearer header.
 
 ### Inside a feature
 
@@ -108,9 +122,21 @@ Room lifecycle: `waiting → countdown → in_progress → completed`.
 - A completed room stays in memory for 60 seconds but no longer counts as the
   player's room, so they can queue again at once.
 - Battle submissions use REST, not the socket.
+- Problem difficulty follows the players' average rating (below 1150 Easy,
+  below 1450 Medium, else Hard), with a fallback when none exists.
+- In-progress battles are copied to `ActiveRoom` (on start, on each
+  submission, and throttled on code snapshots) and restored at boot. The
+  battle clock is based on `startedAt`, so time spent down still counts.
+- One tab owns a battle. A new tab must send `battle:claim`; the old one
+  gets `battle:takenOver`. A reconnecting socket only takes over if the user
+  has no other live socket.
+- Spectators join the `watch:<roomCode>` channel and get progress only, never
+  code. Replays (snapshots + submissions in `BattleReplay`) are open to the
+  two players only.
+- After a battle either player may offer a rematch (45 s window).
 
-**Single process only.** Room and queue state live in process memory
-(`state.js`). Do not run more than one server instance, PM2 cluster mode, or
+**Single process only.** Room, queue and presence state live in process
+memory (`state.js`, `core/presence.js`). Do not run more than one server instance, PM2 cluster mode, or
 a load balancer with more than one backend, unless this state first moves to
 Redis.
 
@@ -122,24 +148,29 @@ client/src/
 ├── index.css            # design tokens (docs/design.md)
 ├── shared/              # api.js, format.js, layout/, ui/, version.js
 └── features/
-    ├── auth/            # AuthContext, ProtectedRoute, login/register
+    ├── auth/            # AuthContext, ProtectedRoute, AdminRoute, login/register, settings
     ├── home/            # landing page, duel demo, 404
     ├── dashboard/
     ├── problems/        # practice list and page, problem statement
     ├── execution/       # CodeWorkspace (editor, run, submit, verdict)
-    ├── battles/         # socket, find battle, battle room, history
-    ├── leaderboard/
+    ├── battles/         # socket, find battle, battle room, history, replay, watch
+    ├── friends/         # friends page, global challenge notifications
+    ├── admin/           # problem list and editor
+    ├── leaderboard/     # all time and seasons
     ├── profiles/
     ├── skills/
     ├── leetcode/
     └── health/
 ```
 
-- `shared/api.js` is the only Axios instance. It adds the JWT from
-  `localStorage['codearena_token']` and clears it on 401. Each feature has a
+- `shared/api.js` is the only Axios instance. It sends the session cookie
+  (`withCredentials`) and tells `AuthContext` on a 401 so the user is logged
+  out. Nothing about the session is stored in `localStorage`. Each feature has a
   `<name>Service.js` that uses it. Components never call axios directly.
 - `features/battles/SocketContext.jsx` opens one socket when a user is logged
   in. The socket URL is `VITE_API_URL` without the `/api` suffix.
+- `shared/ThemeProvider.jsx` applies light, dark or system theme via
+  `data-theme` on `<html>`; `index.html` sets it before first paint.
 - `features/execution/CodeWorkspace.jsx` is shared by practice and battles.
 - Routes are listed in `src/App.jsx`. Every page except home, login, register
   and 404 is wrapped in `ProtectedRoute`.

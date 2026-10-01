@@ -18,6 +18,7 @@ import userRoutes from './features/profiles/profile.routes.js';
 import matchRoutes from './features/battles/match.routes.js';
 import leetcodeRoutes from './features/leetcode/leetcode.routes.js';
 import skillRoutes from './features/skills/skill.routes.js';
+import friendRoutes from './features/friends/friends.routes.js';
 
 const app = express();
 
@@ -55,6 +56,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/matches', matchRoutes);
 app.use('/api/leetcode', leetcodeRoutes);
 app.use('/api/skills', skillRoutes);
+app.use('/api/friends', friendRoutes);
 
 // --- Error handling (must be registered last) ---
 app.use(notFound);

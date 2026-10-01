@@ -1,31 +1,21 @@
-import jwt from 'jsonwebtoken';
-import env from '../../core/config/env.js';
-import User from './User.model.js';
+import { tokenFromHeaders, userFromToken } from './session.js';
 
-// Protects routes by requiring a valid JWT in the Authorization header.
-// On success, attaches the authenticated user (password already excluded by
-// the schema's select: false) to req.user, so downstream controllers - and,
-// later, the Socket.io connection handshake in Step 9 - can rely on it being
-// present without re-verifying anything themselves.
+// Protects routes by requiring a valid, current session: the httpOnly
+// session cookie (browser) or an Authorization: Bearer token (API clients,
+// tests). On success, attaches the authenticated user to req.user.
 export const protect = async (req, res, next) => {
   try {
-    const authHeader = req.headers.authorization;
-
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ success: false, message: 'Not authorized, no token provided' });
+    const token = tokenFromHeaders(req.headers);
+    if (!token) {
+      return res.status(401).json({ success: false, message: 'Not authorized, no session' });
     }
-
-    const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, env.jwtSecret);
-
-    const user = await User.findById(decoded.id);
+    const user = await userFromToken(token);
     if (!user) {
-      return res.status(401).json({ success: false, message: 'Not authorized, user no longer exists' });
+      return res.status(401).json({ success: false, message: 'Not authorized, session invalid or expired' });
     }
-
     req.user = user;
     next();
   } catch (err) {
-    return res.status(401).json({ success: false, message: 'Not authorized, token invalid or expired' });
+    next(err);
   }
 };

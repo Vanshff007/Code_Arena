@@ -3,6 +3,7 @@ import { runCustomInput, judgeSubmission } from './engine/judge.js';
 import { JudgeQueueFullError } from './engine/concurrencyLimiter.js';
 import { handleBattleSubmission } from '../battles/roomManager.js';
 import { trackSubmission } from '../skills/performanceTracker.service.js';
+import EditorialView from '../problems/EditorialView.model.js';
 import logger from '../../core/utils/logger.js';
 
 // POST /api/execute/run - "Run Code": compiles + runs against one ad-hoc
@@ -57,17 +58,19 @@ export const submitCode = async (req, res, next) => {
     // submissions feed the verdict into the room's real-time state so the
     // opponent gets notified and a win/timeout can be resolved.
     if (roomCode) {
-      await handleBattleSubmission(roomCode, req.user._id.toString(), result);
+      await handleBattleSubmission(roomCode, req.user._id.toString(), result, { language, code });
     }
 
     // Feeds the Skill Analyzer / XP / AI Coach pipeline. Wrapped so a bug
     // anywhere in that (still-new) pipeline can never break the actual
     // submit response the player is waiting on.
     const timeTakenMs = startedAt ? Date.now() - Number(startedAt) : null;
+    const editorialViewed = Boolean(await EditorialView.exists({ user: req.user._id, problem: problem._id }));
     const tracking = await trackSubmission({
       userId: req.user._id,
       problem,
       language,
+      editorialViewed,
       verdict: result.verdict,
       timeTakenMs,
       runtimeMs: result.runtimeMs,

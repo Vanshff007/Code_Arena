@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { formatDate, formatSigned } from '../../shared/format';
 import { LANGUAGES } from '../execution/languages';
 
@@ -26,6 +27,11 @@ function MatchRow({ match, detailed = false }) {
           </span>
         </span>
         {detailed && match.endedAt && <span className="text-sm text-muted">{formatDate(match.endedAt)}</span>}
+        {detailed && match.hasReplay && (
+          <Link to={`/replay/${match.matchId}`} className="text-sm font-semibold text-p1 hover:underline">
+            Replay
+          </Link>
+        )}
         <span
           className={`w-14 text-right font-tight text-lg font-bold ${match.ratingChange >= 0 ? 'text-ok' : 'text-p2'}`}
         >

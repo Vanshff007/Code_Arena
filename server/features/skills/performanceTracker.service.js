@@ -40,6 +40,7 @@ export async function trackSubmission({
   timeTakenMs,
   runtimeMs,
   memoryKb,
+  editorialViewed = false,
 }) {
   const isAccepted = verdict === 'Accepted';
   // Problem.tags are always lowercase (schema-enforced); normalize to the
@@ -65,6 +66,7 @@ export async function trackSubmission({
     difficulty: problem.difficulty,
     topics,
     isAccepted,
+    editorialViewed,
   });
 
   if (!isAccepted) {
@@ -87,10 +89,10 @@ export async function trackSubmission({
     memoryKb,
     averageMemoryKb: averages.avgMemoryKb,
     wrongAttempts: wrongAttemptsBeforeThis,
-    // No hint system or editorial content exists yet - see
-    // PerformanceHistory.model.js. Always neutral until one ships.
+    // No hint system exists yet. Editorial views are recorded server-side
+    // (problems/EditorialView) when the player opens one.
     hintsUsed: 0,
-    editorialViewed: false,
+    editorialViewed,
   });
 
   const xpAwarded = [];

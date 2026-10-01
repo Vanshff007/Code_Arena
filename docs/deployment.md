@@ -29,6 +29,12 @@ One Ubuntu VPS:
 - Run `npm run seed-problems` after adding problems to
   `server/features/problems/seedProblems.js`.
 - Nginx must forward WebSocket upgrade headers for `/socket.io`.
+- **Serve the client and the API from the same site** (same domain, or
+  subdomains of one domain). The session is a `SameSite=Lax` httpOnly
+  cookie, so a client on another site cannot log in. `NODE_ENV=production`
+  marks the cookie `Secure`, so production needs HTTPS.
+- In-progress battles are restored after `pm2 restart` (from `ActiveRoom`).
+  Players in a lobby or the queue must start again.
 - Never commit `.env` files. Production secrets stay on the server.
 
 ## Redeploy

@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Copy, Check } from 'lucide-react';
 import { useSocket } from './useSocket';
 import { useAuth } from '../auth/useAuth';
-import { EVENTS, splitPlayers, outcomeFor, OUTCOME_TEXT } from './battleState';
+import { EVENTS, splitPlayers, outcomeFor, OUTCOME_TEXT, progressFromResume } from './battleState';
 import VersusBar from './VersusBar';
 import BattleChat from './BattleChat';
 import ProblemStatement from '../problems/ProblemStatement';
+import EditorialPanel from '../problems/EditorialPanel';
 import CodeWorkspace from '../execution/CodeWorkspace';
 import { formatNumber, formatSigned } from '../../shared/format';
 import Button, { ButtonLink } from '../../shared/ui/Button';
@@ -17,13 +18,17 @@ import Spinner, { PageSpinner } from '../../shared/ui/Spinner';
 
 // Typing indicator is sent at most this often, not on every keystroke.
 const TYPING_THROTTLE_MS = 1000;
+// Code snapshots for the replay: the latest code, at most this often.
+const SNAPSHOT_INTERVAL_MS = 5000;
 
 function BattleRoomPage() {
   const { roomCode } = useParams();
   const socket = useSocket();
   const { user } = useAuth();
 
-  const [phase, setPhase] = useState('waiting'); // waiting -> countdown -> in_progress -> completed
+  // waiting -> countdown -> in_progress -> completed; takenOver when the
+  // battle moved to another tab.
+  const [phase, setPhase] = useState('waiting');
   const [players, setPlayers] = useState([]);
   const [countdown, setCountdown] = useState(null);
   const [problem, setProblem] = useState(null);
@@ -36,6 +41,7 @@ function BattleRoomPage() {
   const [messages, setMessages] = useState([]);
   const [result, setResult] = useState(null);
   const [roomError, setRoomError] = useState('');
+  const [chatNotice, setChatNotice] = useState('');
   const [copied, setCopied] = useState(false);
 
   // Captured when the battle actually starts (or resumes) - lets the
@@ -43,6 +49,7 @@ function BattleRoomPage() {
   const startedAtRef = useRef(Date.now());
   const typingTimeout = useRef(null);
   const lastTypingSent = useRef(0);
+  const latestCode = useRef(null); // { code, language } not yet sent as a snapshot
 
   const { self, opponent } = splitPlayers(players, user._id);
 
@@ -74,6 +81,9 @@ function BattleRoomPage() {
       setPlayers(data.players);
       setRemainingMs(data.remainingMs);
       setDurationMs(data.durationMs);
+      const progress = progressFromResume(data.progress, user._id);
+      setSelfProgress(progress.self);
+      setOpponentProgress(progress.opponent);
       // Reconstruct the original start time from how much time has already
       // elapsed, so a page refresh mid-battle doesn't reset the "time taken"
       // clock back to zero.
@@ -84,14 +94,22 @@ function BattleRoomPage() {
     const onOpponentDisconnected = () => setOpponentOnline(false);
     const onOpponentReconnected = () => setOpponentOnline(true);
     const onBattleEnd = (data) => {
+      if (data.roomCode && data.roomCode !== roomCode) return;
       setPhase('completed');
       setResult(data);
     };
     const onChatMessage = (msg) => setMessages((prev) => [...prev, msg]);
+    const onChatLimited = ({ message }) => {
+      setChatNotice(message);
+      setTimeout(() => setChatNotice(''), 4000);
+    };
     const onOpponentTyping = () => {
       setOpponentTyping(true);
       clearTimeout(typingTimeout.current);
       typingTimeout.current = setTimeout(() => setOpponentTyping(false), 2000);
+    };
+    const onTakenOver = (data) => {
+      if (data.roomCode === roomCode) setPhase('takenOver');
     };
     const onRoomError = ({ message }) => setRoomError(message);
 
@@ -106,15 +124,35 @@ function BattleRoomPage() {
       [EVENTS.opponentReconnected]: onOpponentReconnected,
       [EVENTS.end]: onBattleEnd,
       [EVENTS.chatMessage]: onChatMessage,
+      [EVENTS.chatRateLimited]: onChatLimited,
       [EVENTS.opponentTyping]: onOpponentTyping,
+      [EVENTS.takenOver]: onTakenOver,
       [EVENTS.roomError]: onRoomError,
     };
     for (const [event, fn] of Object.entries(handlers)) socket.on(event, fn);
+
+    // Opening this page makes this tab the active one for the battle (a
+    // refresh, or a second tab). Ignored by the server if we're not a
+    // player yet (e.g. joining through a room code).
+    socket.emit(EVENTS.claim, { roomCode });
+
     return () => {
       for (const [event, fn] of Object.entries(handlers)) socket.off(event, fn);
       clearTimeout(typingTimeout.current);
     };
-  }, [socket, roomCode]);
+  }, [socket, roomCode, user._id]);
+
+  // Replay snapshots: send the latest code every few seconds while it
+  // changes, never on every keystroke.
+  useEffect(() => {
+    if (!socket || phase !== 'in_progress') return;
+    const id = setInterval(() => {
+      if (!latestCode.current) return;
+      socket.emit(EVENTS.snapshot, { roomCode, ...latestCode.current });
+      latestCode.current = null;
+    }, SNAPSHOT_INTERVAL_MS);
+    return () => clearInterval(id);
+  }, [socket, phase, roomCode]);
 
   const handleReady = () => socket.emit(EVENTS.roomReady, { roomCode });
 
@@ -124,7 +162,8 @@ function BattleRoomPage() {
     setTimeout(() => setCopied(false), 1500);
   };
 
-  const handleTyping = () => {
+  const handleCodeChange = (code, language) => {
+    latestCode.current = { code, language };
     const now = Date.now();
     if (now - lastTypingSent.current < TYPING_THROTTLE_MS) return;
     lastTypingSent.current = now;
@@ -146,6 +185,20 @@ function BattleRoomPage() {
     );
   }
 
+  if (phase === 'takenOver') {
+    return (
+      <main className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+        <h1 className="font-wide text-3xl font-extrabold">This battle is open in another tab</h1>
+        <p className="mt-2 max-w-xl text-muted">
+          Only one tab can play at a time. Keep going in the other tab, or move the battle back here.
+        </p>
+        <Button className="mt-6" onClick={() => socket.emit(EVENTS.claim, { roomCode })}>
+          Use this tab
+        </Button>
+      </main>
+    );
+  }
+
   if (phase === 'waiting') {
     return (
       <Lobby
@@ -161,7 +214,9 @@ function BattleRoomPage() {
 
   if (phase === 'countdown') return <Countdown seconds={countdown} self={self} opponent={opponent} />;
 
-  if (phase === 'completed' && result) return <Result result={result} userId={user._id} />;
+  if (phase === 'completed' && result) {
+    return <Result result={result} userId={user._id} problem={problem} socket={socket} roomCode={roomCode} />;
+  }
 
   if (!problem) return <PageSpinner label="Loading the problem" />;
 
@@ -188,7 +243,7 @@ function BattleRoomPage() {
           <CodeWorkspace
             problem={problem}
             submitExtras={() => ({ roomCode, startedAt: startedAtRef.current })}
-            onCodeChange={handleTyping}
+            onCodeChange={handleCodeChange}
             onVerdict={(v) => setSelfProgress({ passedCount: v.passedCount, totalCount: v.totalCount })}
           />
         </div>
@@ -198,6 +253,7 @@ function BattleRoomPage() {
             selfName={user.username}
             opponentName={opponent?.username}
             onSend={sendChat}
+            notice={chatNotice}
           />
         </div>
       </div>
@@ -285,7 +341,63 @@ function Countdown({ seconds, self, opponent }) {
   );
 }
 
-function Result({ result, userId }) {
+// Rematch offers after the battle: either player can offer; the other
+// accepts or declines. Accepting starts a new room for both.
+function Rematch({ socket, roomCode }) {
+  const navigate = useNavigate();
+  const [state, setState] = useState({ status: 'idle' }); // idle | pending | offered | declined | unavailable
+
+  useEffect(() => {
+    const onRequested = (d) => d.roomCode === roomCode && setState({ status: 'offered', from: d.from });
+    const onPending = (d) => d.roomCode === roomCode && setState({ status: 'pending' });
+    const onDeclined = (d) => d.roomCode === roomCode && setState({ status: 'declined', by: d.by });
+    const onUnavailable = (d) => setState({ status: 'unavailable', message: d.message });
+    const onStart = (d) => navigate(`/battle/${d.roomCode}`);
+    const handlers = {
+      [EVENTS.rematchRequested]: onRequested,
+      [EVENTS.rematchPending]: onPending,
+      [EVENTS.rematchDeclined]: onDeclined,
+      [EVENTS.rematchUnavailable]: onUnavailable,
+      [EVENTS.rematchStart]: onStart,
+    };
+    for (const [event, fn] of Object.entries(handlers)) socket.on(event, fn);
+    return () => {
+      for (const [event, fn] of Object.entries(handlers)) socket.off(event, fn);
+    };
+  }, [socket, roomCode, navigate]);
+
+  if (state.status === 'offered') {
+    return (
+      <div className="flex flex-wrap items-center gap-3 border-l-4 border-p2 bg-panel px-4 py-3">
+        <span className="font-semibold">{state.from} wants a rematch.</span>
+        <Button onClick={() => socket.emit(EVENTS.rematchAccept, { roomCode })}>Accept</Button>
+        <Button
+          variant="ghost"
+          onClick={() => {
+            socket.emit(EVENTS.rematchDecline, { roomCode });
+            setState({ status: 'idle' });
+          }}
+        >
+          Decline
+        </Button>
+      </div>
+    );
+  }
+  if (state.status === 'pending') {
+    return <p className="flex items-center gap-2 text-sm text-muted"><Spinner className="size-4" /> Waiting for your opponent to accept the rematch</p>;
+  }
+  return (
+    <div className="flex flex-col items-start gap-2">
+      <Button variant="secondary" onClick={() => socket.emit(EVENTS.rematchRequest, { roomCode })}>
+        Offer a rematch
+      </Button>
+      {state.status === 'declined' && <p className="text-sm text-muted">{state.by} declined the rematch.</p>}
+      {state.status === 'unavailable' && <p className="text-sm text-muted">{state.message}</p>}
+    </div>
+  );
+}
+
+function Result({ result, userId, problem, socket, roomCode }) {
   const outcome = outcomeFor(result, userId);
   const { self: you, opponent: opp } = splitPlayers(result.results, userId);
   const headlineColor = outcome === 'win' ? 'text-p1' : outcome === 'loss' ? 'text-p2' : 'text-ink';
@@ -330,12 +442,27 @@ function Result({ result, userId }) {
         )}
       </div>
 
-      <div className="mt-8 flex flex-wrap gap-3">
+      <div className="mt-8 flex flex-wrap items-start gap-3">
         <ButtonLink to="/battle">Find another match</ButtonLink>
-        <ButtonLink to="/dashboard" variant="secondary">
+        {result.matchId && (
+          <ButtonLink to={`/replay/${result.matchId}`} variant="secondary">
+            Watch the replay
+          </ButtonLink>
+        )}
+        <ButtonLink to="/dashboard" variant="ghost">
           Go to dashboard
         </ButtonLink>
       </div>
+
+      <div className="mt-6">
+        <Rematch socket={socket} roomCode={roomCode} />
+      </div>
+
+      {problem && (
+        <div className="mt-10">
+          <EditorialPanel problemId={problem._id} />
+        </div>
+      )}
     </main>
   );
 }

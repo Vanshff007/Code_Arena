@@ -4,7 +4,7 @@ import { readFileSync } from 'fs';
 vi.mock('../../shared/api', () => ({ default: { get: vi.fn(async () => ({ data: 'ok' })) } }));
 
 import api from '../../shared/api';
-import { getMyMatches } from './matchService';
+import { getMyMatches, getLiveBattles, getReplay } from './matchService';
 import {
   EVENTS,
   splitPlayers,
@@ -13,7 +13,9 @@ import {
   outcomeFor,
   summarizeMatches,
   OUTCOME_TEXT,
+  progressFromResume,
 } from './battleState';
+import { codeAt, replayLength, submissionsUntil, advance } from './replay';
 
 describe('matchService', () => {
   it('fetches my matches', async () => {
@@ -25,8 +27,8 @@ describe('matchService', () => {
 describe('socket event contract', () => {
   // Every event name the client uses must exist in the server socket code,
   // so a rename on one side fails this test instead of silently breaking.
-  const serverSource = ['sockets.js', 'roomManager.js']
-    .map((f) => readFileSync(new URL(`../../../../server/features/battles/${f}`, import.meta.url), 'utf8'))
+  const serverSource = ['battles/sockets.js', 'battles/roomManager.js', 'friends/friendSockets.js', 'friends/friends.controller.js']
+    .map((f) => readFileSync(new URL(`../../../../server/features/${f}`, import.meta.url), 'utf8'))
     .join('\n');
 
   it.each(Object.entries(EVENTS))('%s (%s) exists on the server', (_, name) => {
@@ -75,5 +77,67 @@ describe('battle helpers', () => {
     ]);
     expect(summary).toEqual({ played: 4, wins: 2, losses: 1, draws: 1, ratingChange: 12 });
     expect(summarizeMatches()).toEqual({ played: 0, wins: 0, losses: 0, draws: 0, ratingChange: 0 });
+  });
+});
+
+describe('progressFromResume', () => {
+  it('splits progress into self and opponent, null before a submission', () => {
+    const progress = [
+      { userId: 'me', verdict: 'Wrong Answer', passedCount: 2, totalCount: 5 },
+      { userId: 'them', verdict: null, passedCount: 0, totalCount: 0 },
+    ];
+    expect(progressFromResume(progress, 'me')).toEqual({
+      self: { passedCount: 2, totalCount: 5, verdict: 'Wrong Answer' },
+      opponent: null,
+    });
+    expect(progressFromResume(undefined, 'me')).toEqual({ self: null, opponent: null });
+  });
+});
+
+describe('replay helpers', () => {
+  const snaps = [
+    { t: 0, code: 'a', language: 'python' },
+    { t: 5000, code: 'b', language: 'python' },
+    { t: 9000, code: 'c', language: 'cpp' },
+  ];
+
+  it('finds the code at a moment', () => {
+    expect(codeAt(snaps, 4999).code).toBe('a');
+    expect(codeAt(snaps, 5000).code).toBe('b');
+    expect(codeAt(snaps, 60_000).code).toBe('c');
+    expect(codeAt([{ t: 100, code: 'x', language: 'cpp' }], 50)).toBeNull();
+    expect(codeAt(undefined, 10)).toBeNull();
+  });
+
+  it('measures the replay up to the last event, capped by the battle length', () => {
+    const players = [{ snapshots: snaps }, { snapshots: [] }];
+    expect(replayLength(players, [{ t: 12_000 }], 900_000)).toBe(12_000);
+    expect(replayLength(players, [{ t: 2_000_000 }], 900_000)).toBe(900_000);
+    expect(replayLength([], [], 0)).toBe(1000);
+  });
+
+  it('lists submissions so far, newest first', () => {
+    const timeline = [{ t: 1 }, { t: 5 }, { t: 9 }];
+    expect(submissionsUntil(timeline, 6).map((e) => e.t)).toEqual([5, 1]);
+  });
+
+  it('advances playback and stops at the end', () => {
+    expect(advance(1000, 100, 10, 60_000)).toBe(2000);
+    expect(advance(59_500, 100, 10, 60_000)).toBe(60_000);
+  });
+});
+
+describe('live and replay services', () => {
+  it('fetches live battles and a replay', async () => {
+    await getLiveBattles();
+    expect(api.get).toHaveBeenCalledWith('/matches/live');
+    await getReplay('m1');
+    expect(api.get).toHaveBeenCalledWith('/matches/m1/replay');
+  });
+});
+
+describe('replay length rounding', () => {
+  it('rounds up to the slider step so the end includes the last event', () => {
+    expect(replayLength([], [{ t: 12_123 }], 900_000)).toBe(12_500);
   });
 });

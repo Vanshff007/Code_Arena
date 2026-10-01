@@ -1,33 +1,31 @@
 import axios from 'axios';
 
-// Single configured Axios instance - every service file in this app
-// (authService, problemService, battleService, ...) imports this instead of
-// calling axios directly, so the base URL and token handling are defined
-// exactly once.
+// Single configured Axios instance - every feature service imports this
+// instead of calling axios directly, so the base URL and credentials
+// handling are defined exactly once.
+//
+// The session lives in an httpOnly cookie set by the server; scripts on the
+// page can't read it. withCredentials makes the browser send it (the API is
+// on the same site, a different port in development).
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
   headers: { 'Content-Type': 'application/json' },
+  withCredentials: true,
 });
 
-// Attaches the JWT (if the user is logged in) to every outgoing request.
-// AuthContext (Step 5) is responsible for writing the token here after
-// register/login.
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('codearena_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+// Listeners for "the session is gone" (a 401 from any request), so the auth
+// state can drop the user without every caller handling it.
+const unauthorizedListeners = new Set();
 
-// If the backend ever responds 401 (expired/invalid token), clear the stale
-// token immediately so the app doesn't keep resending a dead credential.
+export function onUnauthorized(listener) {
+  unauthorizedListeners.add(listener);
+  return () => unauthorizedListeners.delete(listener);
+}
+
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('codearena_token');
-    }
+    if (error.response?.status === 401) unauthorizedListeners.forEach((fn) => fn());
     return Promise.reject(error);
   }
 );

@@ -33,6 +33,10 @@ const userSchema = new mongoose.Schema(
       enum: ['user', 'admin'],
       default: 'user', // promoted only via the features/auth/makeAdmin.js CLI, never over HTTP
     },
+    // Bumped to revoke every session at once (log out everywhere, password
+    // change). Each JWT carries the version it was issued with - see
+    // session.js.
+    tokenVersion: { type: Number, default: 0, select: false },
     rating: {
       type: Number,
       default: 1000, // starting ELO; matchmaking (later step) adjusts this after each battle
@@ -113,6 +117,7 @@ userSchema.methods.comparePassword = function comparePassword(candidatePassword)
 userSchema.set('toJSON', {
   transform: (doc, ret) => {
     delete ret.password;
+    delete ret.tokenVersion;
     delete ret.__v;
     return ret;
   },

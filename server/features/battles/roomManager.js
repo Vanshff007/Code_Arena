@@ -1,34 +1,72 @@
 import { randomInt } from 'crypto';
 import Problem from '../problems/Problem.model.js';
 import Match from './Match.model.js';
+import ActiveRoom from './ActiveRoom.model.js';
+import BattleReplay from './BattleReplay.model.js';
 import User from '../auth/User.model.js';
 import { calculateRatings } from './rating.service.js';
-import { getIO } from './ioInstance.js';
-import { matchmakingQueue, rooms, createRoomState, findRoomByUserId } from './state.js';
+import { getIO } from '../../core/io.js';
+import {
+  matchmakingQueue,
+  rooms,
+  createRoomState,
+  findRoomByUserId,
+  difficultyForRatings,
+  addSnapshot,
+} from './state.js';
 import logger from '../../core/utils/logger.js';
 
 const DISCONNECT_GRACE_MS = 20 * 1000; // time an opponent has to reconnect before auto-forfeit
+const COMPLETED_ROOM_TTL_MS = 60 * 1000; // result screen, late events, rematch window
+const REMATCH_WINDOW_MS = 45 * 1000;
+const SNAPSHOT_PERSIST_INTERVAL_MS = 5000;
+
+const watchChannel = (roomCode) => `watch:${roomCode}`;
 
 function generateRoomCode() {
   const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I - easy to read aloud/type
   let code = '';
   for (let i = 0; i < 6; i++) code += alphabet[randomInt(alphabet.length)];
-  return code;
+  return rooms.has(code) ? generateRoomCode() : code;
 }
 
 // Uses a random skip offset rather than $sample so the query goes through
 // Mongoose's normal find path - hiddenTestCases (select: false on the
 // schema) stays excluded. An aggregation $sample would bypass that
 // projection entirely and could leak hidden test cases into battle:start.
-async function pickRandomProblem() {
-  const count = await Problem.countDocuments();
-  if (count === 0) throw new Error('No problems available to start a battle');
-  const problem = await Problem.findOne().skip(randomInt(count));
-  return problem;
+// Prefers the difficulty that fits the players' ratings; falls back to any
+// problem when the bank has none of that difficulty.
+async function pickProblem(difficulty) {
+  for (const filter of [{ difficulty }, {}]) {
+    const count = await Problem.countDocuments(filter);
+    if (count > 0) return Problem.findOne(filter).skip(randomInt(count));
+  }
+  throw new Error('No problems available to start a battle');
+}
+
+function socketById(socketId) {
+  return socketId ? getIO()?.sockets.sockets.get(socketId) : undefined;
+}
+
+function emitToPlayer(player, event, data) {
+  if (player?.socketId) getIO().to(player.socketId).emit(event, data);
 }
 
 function toPublicPlayer(player) {
   return { userId: player.userId, username: player.username, rating: player.rating, ready: !!player.ready };
+}
+
+function publicResults(room) {
+  return room.players.map((p) => ({
+    userId: p.userId,
+    verdict: room.results[p.userId]?.verdict ?? null,
+    passedCount: room.results[p.userId]?.passedCount ?? 0,
+    totalCount: room.results[p.userId]?.totalCount ?? 0,
+  }));
+}
+
+function remainingMs(room) {
+  return room.startedAt ? Math.max(0, room.durationMs - (Date.now() - room.startedAt)) : room.durationMs;
 }
 
 function broadcastRoomState(roomCode) {
@@ -41,52 +79,162 @@ function broadcastRoomState(roomCode) {
   });
 }
 
-// --- Private rooms (Create Room / Join Room / Invite Friends) ---
+// What a spectator sees: players, progress, clock and the problem - never
+// code (see docs/api.md, "Spectators").
+function spectatorState(room) {
+  return {
+    roomCode: room.roomCode,
+    status: room.status,
+    players: room.players.map(toPublicPlayer),
+    progress: publicResults(room),
+    problem: room.problem,
+    durationMs: room.durationMs,
+    remainingMs: remainingMs(room),
+  };
+}
 
-export function createRoom(socket) {
-  logger.info(`[Room] room:create received from ${socket.user.username} (${socket.id})`);
+// --- Persistence (restart-safe battles) ---
 
-  const existing = findRoomByUserId(socket.user._id.toString());
-  if (existing) {
-    logger.info(`[Room] ${socket.user.username} rejected - already in a room`);
-    return socket.emit('room:error', { message: 'You are already in a room' });
+async function persistRoom(room) {
+  if (room.status !== 'in_progress' || !room.matchId) return;
+  room.lastPersistAt = Date.now();
+  try {
+    await ActiveRoom.findOneAndUpdate(
+      { roomCode: room.roomCode },
+      {
+        roomCode: room.roomCode,
+        players: room.players.map((p) => ({ userId: p.userId, username: p.username, rating: p.rating })),
+        problem: room.problem._id,
+        matchId: room.matchId,
+        startedAt: new Date(room.startedAt),
+        durationMs: room.durationMs,
+        results: room.results,
+        snapshots: room.snapshots,
+        timeline: room.timeline,
+      },
+      { upsert: true }
+    );
+  } catch (err) {
+    logger.error(`[Battle] Could not persist room ${room.roomCode}: ${err.message}`);
+  }
+}
+
+// The clock holds the room object itself and stops if that room is no
+// longer the live one (ended, or removed while a DB write was in flight).
+function startBattleClock(room) {
+  const { roomCode } = room;
+  const io = getIO();
+  clearInterval(room.timerInterval);
+  room.timerInterval = setInterval(() => {
+    if (rooms.get(roomCode) !== room || room.status !== 'in_progress') {
+      clearInterval(room.timerInterval);
+      return;
+    }
+    const left = remainingMs(room);
+    if (left <= 0) {
+      clearInterval(room.timerInterval);
+      endBattle(roomCode, { reason: 'timeout' });
+    } else {
+      io.to(roomCode).to(watchChannel(roomCode)).emit('battle:timerSync', { remainingMs: left });
+    }
+  }, 1000);
+}
+
+// Mongo Mixed fields may hand dates back as strings.
+function reviveDates(results) {
+  for (const r of Object.values(results)) {
+    if (r?.submittedAt && !(r.submittedAt instanceof Date)) r.submittedAt = new Date(r.submittedAt);
+  }
+  return results;
+}
+
+// Called once at boot, before the server accepts connections. Rebuilds
+// every in-progress battle from Mongo and restarts its clock. Players get
+// back in through handleReconnect when their browser reconnects. No forfeit
+// timers are started for the restart itself - the battle clock decides.
+export async function restoreActiveBattles() {
+  const saved = await ActiveRoom.find();
+  let restored = 0;
+  for (const doc of saved) {
+    const problem = await Problem.findById(doc.problem);
+    if (!problem) {
+      await ActiveRoom.deleteOne({ _id: doc._id });
+      continue;
+    }
+    const [first, ...others] = doc.players.map((p) => ({ ...p.toObject(), socketId: null, ready: true }));
+    const room = createRoomState(doc.roomCode, first);
+    room.players.push(...others);
+    Object.assign(room, {
+      status: 'in_progress',
+      problem,
+      matchId: doc.matchId,
+      startedAt: doc.startedAt.getTime(),
+      durationMs: doc.durationMs,
+      results: reviveDates(doc.results ?? {}),
+      snapshots: doc.snapshots ?? {},
+      timeline: doc.timeline ?? [],
+    });
+    if (remainingMs(room) <= 0) {
+      await endBattle(doc.roomCode, { reason: 'timeout' });
+    } else {
+      startBattleClock(room);
+      restored += 1;
+    }
+  }
+  if (saved.length) logger.info(`[Battle] Restored ${restored} in-progress battle(s) after restart`);
+  return restored;
+}
+
+// --- Private rooms (Create Room / Join Room / friend challenges) ---
+
+// Creates a private room hosted by this socket's user. Returns the room
+// code, or null (with room:error sent) if they are already busy.
+export function createPrivateRoom(socket) {
+  const userId = socket.user._id.toString();
+  if (findRoomByUserId(userId) || matchmakingQueue.some((q) => q.userId === userId)) {
+    socket.emit('room:error', { message: 'You are already in a room or the queue' });
+    return null;
   }
 
   const roomCode = generateRoomCode();
-  const hostPlayer = {
-    userId: socket.user._id.toString(),
+  createRoomState(roomCode, {
+    userId,
     socketId: socket.id,
     username: socket.user.username,
     rating: socket.user.rating,
     ready: false,
-  };
-  createRoomState(roomCode, hostPlayer);
+  });
   logger.info(`[Room] Room created: ${roomCode} (host: ${socket.user.username})`);
-
   socket.join(roomCode);
-  socket.emit('room:created', { roomCode });
   broadcastRoomState(roomCode);
+  return roomCode;
+}
+
+export function createRoom(socket) {
+  const roomCode = createPrivateRoom(socket);
+  if (roomCode) socket.emit('room:created', { roomCode });
 }
 
 export function joinRoom(socket, roomCode) {
-  logger.info(`[Room] room:join received from ${socket.user.username} for room ${roomCode}`);
-
   const room = rooms.get(roomCode);
-  if (!room) {
-    logger.info(`[Room] Join rejected - room ${roomCode} not found`);
+  if (!room || room.status === 'completed') {
     return socket.emit('room:error', { message: 'Room not found' });
   }
+  const userId = socket.user._id.toString();
+  if (room.players.some((p) => p.userId === userId)) {
+    // Already a player (e.g. opened the room link in another tab) - this
+    // tab takes over instead of getting an error.
+    return claimBattle(socket, roomCode);
+  }
   if (room.players.length >= 2) {
-    logger.info(`[Room] Join rejected - room ${roomCode} is full`);
     return socket.emit('room:error', { message: 'Room is already full' });
   }
-  if (room.players.some((p) => p.userId === socket.user._id.toString())) {
-    logger.info(`[Room] Join rejected - ${socket.user.username} already in room ${roomCode}`);
-    return socket.emit('room:error', { message: 'You are already in this room' });
+  if (findRoomByUserId(userId)) {
+    return socket.emit('room:error', { message: 'You are already in another room' });
   }
 
   room.players.push({
-    userId: socket.user._id.toString(),
+    userId,
     socketId: socket.id,
     username: socket.user.username,
     rating: socket.user.rating,
@@ -104,13 +252,12 @@ export function setReady(socket, roomCode) {
 
   const player = room.players.find((p) => p.userId === socket.user._id.toString());
   if (!player) return socket.emit('room:error', { message: 'You are not in this room' });
+  if (room.status !== 'waiting') return;
 
   player.ready = true;
-  logger.info(`[Room] ${socket.user.username} ready in room ${roomCode}`);
   broadcastRoomState(roomCode);
 
   if (room.players.length === 2 && room.players.every((p) => p.ready)) {
-    logger.info(`[Room] Both players ready in room ${roomCode} - starting countdown`);
     startCountdown(roomCode);
   }
 }
@@ -118,59 +265,38 @@ export function setReady(socket, roomCode) {
 // --- Random matchmaking ---
 
 export function joinQueue(socket) {
-  logger.info(`[Matchmaking] joinQueue received from ${socket.user.username} (${socket.id})`);
-
-  if (findRoomByUserId(socket.user._id.toString())) {
-    logger.info(`[Matchmaking] ${socket.user.username} rejected - already in a battle`);
+  const userId = socket.user._id.toString();
+  if (findRoomByUserId(userId)) {
     return socket.emit('room:error', { message: 'You are already in a battle' });
   }
-  if (matchmakingQueue.some((q) => q.userId === socket.user._id.toString())) {
-    logger.info(`[Matchmaking] ${socket.user.username} already queued - ignoring duplicate join`);
-    return;
-  }
+  if (matchmakingQueue.some((q) => q.userId === userId)) return;
 
-  matchmakingQueue.push({
-    socketId: socket.id,
-    userId: socket.user._id.toString(),
-    username: socket.user.username,
-    rating: socket.user.rating,
-  });
+  matchmakingQueue.push({ socketId: socket.id, userId, username: socket.user.username, rating: socket.user.rating });
   logger.info(`[Matchmaking] ${socket.user.username} queued. Queue size: ${matchmakingQueue.length}`);
   socket.emit('matchmaking:waiting');
 
   if (matchmakingQueue.length >= 2) {
     const [a, b] = matchmakingQueue.splice(0, 2);
     logger.info(`[Matchmaking] Opponent found: ${a.username} vs ${b.username}`);
-
-    const roomCode = generateRoomCode();
-    const room = createRoomState(roomCode, { ...a, ready: true });
-    room.players.push({ ...b, ready: true });
-    logger.info(`[Matchmaking] Room created: ${roomCode}`);
-    logger.info(`[Matchmaking] Players assigned to room ${roomCode}: ${a.username}, ${b.username}`);
-
-    const io = getIO();
-    const socketA = io.sockets.sockets.get(a.socketId);
-    const socketB = io.sockets.sockets.get(b.socketId);
-    if (!socketA || !socketB) {
-      logger.error(
-        `[Matchmaking] One or both sockets missing at pairing time (a=${!!socketA}, b=${!!socketB}) for room ${roomCode}`
-      );
-    }
-    socketA?.join(roomCode);
-    socketB?.join(roomCode);
-    io.to(roomCode).emit('matchmaking:found', { roomCode });
-    logger.info(`[Matchmaking] matchmaking:found emitted to room ${roomCode}`);
-
-    startCountdown(roomCode);
+    startRoomWith(a, b, 'matchmaking:found');
   }
+}
+
+// Puts two players in a new room, ready, and starts the countdown. Used by
+// matchmaking and rematches.
+function startRoomWith(a, b, event) {
+  const roomCode = generateRoomCode();
+  const room = createRoomState(roomCode, { ...a, ready: true });
+  room.players.push({ ...b, ready: true });
+  for (const p of room.players) socketById(p.socketId)?.join(roomCode);
+  getIO().to(roomCode).emit(event, { roomCode });
+  startCountdown(roomCode);
+  return roomCode;
 }
 
 export function leaveQueue(socket) {
   const index = matchmakingQueue.findIndex((q) => q.socketId === socket.id);
-  if (index !== -1) {
-    logger.info(`[Matchmaking] ${socket.user.username} left the queue`);
-    matchmakingQueue.splice(index, 1);
-  }
+  if (index !== -1) matchmakingQueue.splice(index, 1);
 }
 
 // --- Battle lifecycle ---
@@ -179,7 +305,6 @@ function startCountdown(roomCode) {
   const room = rooms.get(roomCode);
   if (!room) return;
 
-  logger.info(`[Room] Countdown started for room ${roomCode}`);
   room.status = 'countdown';
   broadcastRoomState(roomCode);
 
@@ -190,7 +315,6 @@ function startCountdown(roomCode) {
     secondsLeft -= 1;
     if (secondsLeft < 0) {
       clearInterval(room.countdownInterval);
-      logger.info(`[Room] Countdown finished for room ${roomCode} - starting battle`);
       startBattle(roomCode);
     }
   }, 1000);
@@ -198,15 +322,12 @@ function startCountdown(roomCode) {
 
 async function startBattle(roomCode) {
   const room = rooms.get(roomCode);
-  if (!room) {
-    logger.error(`[Battle] startBattle called for unknown room ${roomCode}`);
-    return;
-  }
+  if (!room || room.status !== 'countdown') return;
 
   try {
-    logger.info(`[Battle] Selecting problem for room ${roomCode}`);
-    const problem = await pickRandomProblem();
-    logger.info(`[Battle] Problem selected: "${problem.title}" (${problem._id}) for room ${roomCode}`);
+    const difficulty = difficultyForRatings(room.players.map((p) => p.rating));
+    const problem = await pickProblem(difficulty);
+    logger.info(`[Battle] "${problem.title}" (${problem.difficulty}, wanted ${difficulty}) for room ${roomCode}`);
 
     const match = await Match.create({
       problem: problem._id,
@@ -214,14 +335,14 @@ async function startBattle(roomCode) {
       durationMs: room.durationMs,
       startedAt: new Date(),
     });
-    logger.info(`[Battle] Match document created: ${match._id} for room ${roomCode}`);
 
     room.status = 'in_progress';
     room.problem = problem;
     room.matchId = match._id;
     room.startedAt = Date.now();
     for (const p of room.players) {
-      room.results[p.userId] = { verdict: null, passedCount: 0, totalCount: 0, submittedAt: null };
+      room.results[p.userId] = { verdict: null, passedCount: 0, totalCount: 0, submittedAt: null, language: null };
+      room.snapshots[p.userId] = [];
     }
 
     const io = getIO();
@@ -233,17 +354,10 @@ async function startBattle(roomCode) {
       startedAt: room.startedAt,
       players: room.players.map(toPublicPlayer),
     });
-    logger.info(`[Battle] battle:start emitted to room ${roomCode}`);
+    io.to(watchChannel(roomCode)).emit('spectate:state', spectatorState(room));
 
-    room.timerInterval = setInterval(() => {
-      const remainingMs = room.durationMs - (Date.now() - room.startedAt);
-      if (remainingMs <= 0) {
-        clearInterval(room.timerInterval);
-        endBattle(roomCode, { reason: 'timeout' });
-      } else {
-        io.to(roomCode).emit('battle:timerSync', { remainingMs });
-      }
-    }, 1000);
+    await persistRoom(room);
+    startBattleClock(room);
   } catch (err) {
     logger.error(`[Battle] Failed to start battle for room ${roomCode}: ${err.message}`);
     getIO().to(roomCode).emit('room:error', { message: 'Could not start the battle. Please try again.' });
@@ -253,11 +367,13 @@ async function startBattle(roomCode) {
 // Called by the REST /api/execute/submit controller after judging a
 // submission made during a battle - bridges the HTTP judging flow into the
 // real-time room state. Never receives or forwards hidden test case
-// content, only the aggregate verdict.
-export async function handleBattleSubmission(roomCode, userId, result) {
+// content, only the aggregate verdict. `code` is kept for the replay only.
+export async function handleBattleSubmission(roomCode, userId, result, { language = null, code = null } = {}) {
   const room = rooms.get(roomCode);
   if (!room || room.status !== 'in_progress') return;
+  if (!room.players.some((p) => p.userId === userId)) return;
 
+  const t = Date.now() - room.startedAt;
   const existing = room.results[userId];
   // Keep the player's best attempt (highest passedCount) for the
   // timer-expiry tie-break, not just their most recent submission.
@@ -267,22 +383,42 @@ export async function handleBattleSubmission(roomCode, userId, result) {
       passedCount: result.passedCount,
       totalCount: result.totalCount,
       submittedAt: new Date(),
+      language,
     };
   }
+  room.timeline.push({
+    t,
+    userId,
+    verdict: result.verdict,
+    passedCount: result.passedCount,
+    totalCount: result.totalCount,
+    language,
+  });
+  if (code !== null && language) addSnapshot((room.snapshots[userId] ??= []), { t, code, language });
 
+  const summary = { verdict: result.verdict, passedCount: result.passedCount, totalCount: result.totalCount };
   const opponent = room.players.find((p) => p.userId !== userId);
-  if (opponent) {
-    getIO().to(opponent.socketId).emit('battle:opponentSubmitted', {
-      verdict: result.verdict,
-      passedCount: result.passedCount,
-      totalCount: result.totalCount,
-    });
-  }
+  emitToPlayer(opponent, 'battle:opponentSubmitted', summary);
+  getIO().to(watchChannel(roomCode)).emit('battle:progress', { userId, ...summary });
 
   if (result.verdict === 'Accepted') {
     clearInterval(room.timerInterval);
     await endBattle(roomCode, { forcedWinnerId: userId, reason: 'accepted' });
+  } else {
+    await persistRoom(room);
   }
+}
+
+// Periodic code snapshots from a player's editor, for the replay.
+export function recordSnapshot(socket, { roomCode, code, language } = {}) {
+  const room = rooms.get(roomCode);
+  if (!room || room.status !== 'in_progress' || typeof code !== 'string' || typeof language !== 'string') return;
+  const userId = socket.user._id.toString();
+  const player = room.players.find((p) => p.userId === userId);
+  if (!player || player.socketId !== socket.id) return;
+
+  const stored = addSnapshot((room.snapshots[userId] ??= []), { t: Date.now() - room.startedAt, code, language });
+  if (stored && Date.now() - room.lastPersistAt > SNAPSHOT_PERSIST_INTERVAL_MS) persistRoom(room);
 }
 
 function determineOutcome(room, forcedWinnerId) {
@@ -311,6 +447,25 @@ function determineOutcome(room, forcedWinnerId) {
   }
 
   return { winnerId: null, isDraw: true };
+}
+
+async function saveReplay(room) {
+  if (!room.matchId || !room.problem) return;
+  try {
+    await BattleReplay.create({
+      match: room.matchId,
+      problem: room.problem._id,
+      durationMs: room.durationMs,
+      players: room.players.map((p) => ({
+        user: p.userId,
+        username: p.username,
+        snapshots: room.snapshots[p.userId] ?? [],
+      })),
+      timeline: room.timeline.map((e) => ({ ...e, user: e.userId })),
+    });
+  } catch (err) {
+    logger.error(`[Battle] Could not save replay for room ${room.roomCode}: ${err.message}`);
+  }
 }
 
 async function endBattle(roomCode, { forcedWinnerId = null } = {}) {
@@ -350,7 +505,7 @@ async function endBattle(roomCode, { forcedWinnerId = null } = {}) {
       endedAt: new Date(),
       players: room.players.map((p) => ({
         user: p.userId,
-        language: null,
+        language: room.results[p.userId]?.language ?? null,
         verdict: room.results[p.userId]?.verdict ?? null,
         passedCount: room.results[p.userId]?.passedCount ?? 0,
         totalCount: room.results[p.userId]?.totalCount ?? 0,
@@ -359,48 +514,195 @@ async function endBattle(roomCode, { forcedWinnerId = null } = {}) {
         ratingAfter: newRatings[p.userId],
       })),
     });
+    await saveReplay(room);
+    await ActiveRoom.deleteOne({ roomCode });
   }
 
-  getIO()
-    .to(roomCode)
-    .emit('battle:end', {
-      winner: winnerId,
-      isDraw,
-      results: room.players.map((p) => ({
-        userId: p.userId,
-        username: p.username,
-        ...room.results[p.userId],
-        ratingBefore: p.rating,
-        ratingAfter: newRatings[p.userId],
-      })),
-    });
+  const payload = {
+    roomCode,
+    matchId: room.matchId,
+    winner: winnerId,
+    isDraw,
+    results: room.players.map((p) => ({
+      userId: p.userId,
+      username: p.username,
+      ...room.results[p.userId],
+      ratingBefore: p.rating,
+      ratingAfter: newRatings[p.userId],
+    })),
+  };
+  getIO().to(roomCode).to(watchChannel(roomCode)).emit('battle:end', payload);
 
-  // Keep the room around briefly so late-arriving events/reconnects during
-  // the result screen still resolve, then free it.
-  setTimeout(() => rooms.delete(roomCode), 60 * 1000);
+  // Keep the room around briefly so late-arriving events, reconnects and
+  // rematch requests during the result screen still resolve, then free it.
+  setTimeout(() => {
+    if (rooms.get(roomCode) === room) rooms.delete(roomCode);
+  }, COMPLETED_ROOM_TTL_MS);
 }
 
-// --- Chat & presence ---
+// --- Rematch ---
+
+export function requestRematch(socket, { roomCode } = {}) {
+  const room = rooms.get(roomCode);
+  const userId = socket.user._id.toString();
+  if (!room || room.status !== 'completed' || !room.players.some((p) => p.userId === userId)) {
+    return socket.emit('rematch:unavailable', { message: 'This battle can no longer be rematched.' });
+  }
+  const opponent = room.players.find((p) => p.userId !== userId);
+  if (!opponent || !socketById(opponent.socketId)) {
+    return socket.emit('rematch:unavailable', { message: `${opponent?.username ?? 'Your opponent'} has left.` });
+  }
+  if (findRoomByUserId(opponent.userId)) {
+    return socket.emit('rematch:unavailable', { message: `${opponent.username} is already in another battle.` });
+  }
+  room.rematch = { from: userId, at: Date.now() };
+  emitToPlayer(opponent, 'rematch:requested', { roomCode, from: socket.user.username });
+  socket.emit('rematch:pending', { roomCode });
+}
+
+export async function acceptRematch(socket, { roomCode } = {}) {
+  const room = rooms.get(roomCode);
+  const userId = socket.user._id.toString();
+  const valid =
+    room?.status === 'completed' &&
+    room.rematch &&
+    room.rematch.from !== userId &&
+    Date.now() - room.rematch.at < REMATCH_WINDOW_MS &&
+    room.players.some((p) => p.userId === userId);
+  if (!valid) {
+    return socket.emit('rematch:unavailable', { message: 'The rematch offer has expired.' });
+  }
+  room.rematch = null;
+
+  // Fresh ratings: the battle that just ended changed them.
+  const users = await User.find({ _id: { $in: room.players.map((p) => p.userId) } }).select('rating');
+  const ratingOf = Object.fromEntries(users.map((u) => [u._id.toString(), u.rating]));
+  const [a, b] = room.players.map((p) => ({
+    userId: p.userId,
+    socketId: p.userId === userId ? socket.id : p.socketId,
+    username: p.username,
+    rating: ratingOf[p.userId] ?? p.rating,
+  }));
+  if (findRoomByUserId(a.userId) || findRoomByUserId(b.userId)) {
+    return socket.emit('rematch:unavailable', { message: 'One of you is already in another battle.' });
+  }
+  startRoomWith(a, b, 'rematch:start');
+}
+
+export function declineRematch(socket, { roomCode } = {}) {
+  const room = rooms.get(roomCode);
+  if (!room?.rematch) return;
+  const requester = room.players.find((p) => p.userId === room.rematch.from);
+  room.rematch = null;
+  emitToPlayer(requester, 'rematch:declined', { roomCode, by: socket.user.username });
+}
+
+// --- Chat & typing ---
 
 export function sendChatMessage(socket, roomCode, message) {
   const room = rooms.get(roomCode);
   if (!room) return;
   if (!room.players.some((p) => p.userId === socket.user._id.toString())) return;
+  const text = String(message ?? '').trim().slice(0, 500);
+  if (!text) return;
 
-  getIO().to(roomCode).emit('chat:message', {
-    username: socket.user.username,
-    message: String(message).slice(0, 500),
-    timestamp: Date.now(),
-  });
+  getIO()
+    .to(roomCode)
+    .to(watchChannel(roomCode))
+    .emit('chat:message', { username: socket.user.username, message: text, timestamp: Date.now() });
 }
 
 export function broadcastTyping(socket, roomCode) {
   const room = rooms.get(roomCode);
   if (!room) return;
+  const userId = socket.user._id.toString();
+  if (!room.players.some((p) => p.userId === userId)) return;
   socket.to(roomCode).emit('battle:opponentTyping');
+  getIO().to(watchChannel(roomCode)).emit('battle:typing', { userId });
 }
 
-// --- Disconnect / forfeit handling ---
+// --- Spectators ---
+
+export function listLiveBattles() {
+  const io = getIO();
+  return [...rooms.values()]
+    .filter((r) => r.status === 'in_progress')
+    .map((r) => ({
+      roomCode: r.roomCode,
+      players: r.players.map((p) => ({ username: p.username, rating: p.rating })),
+      problem: { title: r.problem.title, difficulty: r.problem.difficulty },
+      remainingMs: remainingMs(r),
+      spectators: io?.sockets.adapter.rooms.get(watchChannel(r.roomCode))?.size ?? 0,
+    }))
+    .sort((a, b) => b.remainingMs - a.remainingMs);
+}
+
+export function joinSpectators(socket, { roomCode } = {}) {
+  const room = rooms.get(roomCode);
+  if (!room || room.status === 'completed' || room.status === 'waiting') {
+    return socket.emit('spectate:error', { message: 'This battle is not live.' });
+  }
+  if (room.players.some((p) => p.userId === socket.user._id.toString())) {
+    return socket.emit('spectate:error', { message: 'You are playing in this battle.' });
+  }
+  socket.join(watchChannel(roomCode));
+  socket.emit('spectate:state', spectatorState(room));
+}
+
+export function leaveSpectators(socket, { roomCode } = {}) {
+  if (roomCode) socket.leave(watchChannel(roomCode));
+}
+
+// --- Several tabs, disconnects and reconnects ---
+
+// Makes this socket the player's active connection for their battle. The
+// previous tab is told it was taken over (and can claim it back).
+function takeOver(room, player, socket) {
+  const previous = player.socketId;
+  if (previous && previous !== socket.id) {
+    const old = socketById(previous);
+    if (old) {
+      old.leave(room.roomCode);
+      old.emit('battle:takenOver', { roomCode: room.roomCode });
+    }
+  }
+  player.socketId = socket.id;
+  socket.join(room.roomCode);
+
+  if (room.disconnectTimers[player.userId]) {
+    clearTimeout(room.disconnectTimers[player.userId]);
+    delete room.disconnectTimers[player.userId];
+    const opponent = room.players.find((p) => p.userId !== player.userId);
+    emitToPlayer(opponent, 'battle:opponentReconnected');
+  }
+}
+
+function resumePayload(room) {
+  return {
+    roomCode: room.roomCode,
+    problem: room.problem,
+    durationMs: room.durationMs,
+    remainingMs: remainingMs(room),
+    players: room.players.map(toPublicPlayer),
+    progress: publicResults(room),
+  };
+}
+
+// Sent by the battle page when it opens, and by "Use this tab" after a
+// takeover: this tab becomes the player's active one for the battle.
+// Silently ignored for non-players (e.g. a room link opened by someone
+// about to join), so it never races room:join.
+export function claimBattle(socket, roomCode) {
+  const room = rooms.get(roomCode);
+  if (!room || room.status === 'completed') {
+    return socket.emit('room:error', { message: 'This battle has ended or does not exist.' });
+  }
+  const player = room.players.find((p) => p.userId === socket.user._id.toString());
+  if (!player) return;
+  takeOver(room, player, socket);
+  if (room.status === 'in_progress') socket.emit('battle:resume', resumePayload(room));
+  else broadcastRoomState(roomCode);
+}
 
 export function handleDisconnect(socket) {
   leaveQueue(socket);
@@ -410,11 +712,19 @@ export function handleDisconnect(socket) {
 
   const room = findRoomByUserId(userId);
   if (!room) return;
+  const player = room.players.find((p) => p.userId === userId);
+  // Another tab is the active one - closing this one changes nothing.
+  if (player.socketId !== socket.id) return;
+  player.socketId = null;
 
   if (room.status === 'waiting' || room.status === 'countdown') {
     // No battle in progress yet - just drop them from the room.
     room.players = room.players.filter((p) => p.userId !== userId);
     clearInterval(room.countdownInterval);
+    if (room.status === 'countdown') {
+      room.status = 'waiting';
+      room.players.forEach((p) => (p.ready = false));
+    }
     if (room.players.length === 0) rooms.delete(room.roomCode);
     else broadcastRoomState(room.roomCode);
     return;
@@ -422,43 +732,27 @@ export function handleDisconnect(socket) {
 
   if (room.status === 'in_progress') {
     const opponent = room.players.find((p) => p.userId !== userId);
-    if (opponent) {
-      getIO().to(opponent.socketId).emit('battle:opponentDisconnected', { graceMs: DISCONNECT_GRACE_MS });
-    }
+    emitToPlayer(opponent, 'battle:opponentDisconnected', { graceMs: DISCONNECT_GRACE_MS });
 
     room.disconnectTimers[userId] = setTimeout(() => {
-      if (opponent) endBattle(room.roomCode, { forcedWinnerId: opponent.userId });
+      // Both gone (e.g. both closed the tab): let the clock decide instead.
+      if (opponent?.socketId) endBattle(room.roomCode, { forcedWinnerId: opponent.userId });
     }, DISCONNECT_GRACE_MS);
   }
 }
 
-// Called on a fresh connection - if this user has an in-progress battle
-// (e.g. they refreshed the page), rejoin them to it instead of leaving them
-// stranded on a disconnect timer.
+// Called on a fresh connection. If this user has a room and no other live
+// connection for it (they refreshed, lost the network, or the server
+// restarted), this socket takes over and the battle resumes. If another
+// tab is still connected, nothing changes here - opening the dashboard in
+// a new tab must not steal the battle; the battle page claims explicitly.
 export function handleReconnect(socket) {
   const userId = socket.user._id.toString();
   const room = findRoomByUserId(userId);
   if (!room) return null;
 
   const player = room.players.find((p) => p.userId === userId);
-  player.socketId = socket.id;
-  socket.join(room.roomCode);
-
-  if (room.disconnectTimers[userId]) {
-    clearTimeout(room.disconnectTimers[userId]);
-    delete room.disconnectTimers[userId];
-    const opponent = room.players.find((p) => p.userId !== userId);
-    if (opponent) getIO().to(opponent.socketId).emit('battle:opponentReconnected');
-  }
-
-  if (room.status !== 'in_progress') return null;
-
-  const remainingMs = room.durationMs - (Date.now() - room.startedAt);
-  return {
-    roomCode: room.roomCode,
-    problem: room.problem,
-    durationMs: room.durationMs,
-    remainingMs,
-    players: room.players.map(toPublicPlayer),
-  };
+  if (player.socketId && player.socketId !== socket.id && socketById(player.socketId)) return null;
+  takeOver(room, player, socket);
+  return room.status === 'in_progress' ? resumePayload(room) : null;
 }

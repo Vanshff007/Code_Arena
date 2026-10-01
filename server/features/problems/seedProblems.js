@@ -12,6 +12,7 @@ import env from '../../core/config/env.js';
 import Problem from './Problem.model.js';
 import User from '../auth/User.model.js';
 import { SEED_PROBLEMS } from './seedData.js';
+import { editorialFor } from './editorials.js';
 
 const update = process.argv.includes('--update');
 
@@ -24,7 +25,8 @@ async function seed() {
   let updated = 0;
   let skipped = 0;
 
-  for (const p of SEED_PROBLEMS) {
+  for (const seed of SEED_PROBLEMS) {
+    const p = { ...seed, editorial: editorialFor(seed.title) };
     const exists = await Problem.findOne({ title: p.title });
     if (!exists) {
       await Problem.create({ ...p, createdBy: owner?._id });
