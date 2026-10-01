@@ -4,7 +4,7 @@ Target: a single Ubuntu 22.04/24.04 VPS (DigitalOcean, Hetzner, EC2, etc.) with 
 
 **Architecture**: MongoDB runs in Docker (via `docker-compose.yml`). The Node server runs **natively** on the host under PM2, not in its own container - it needs the `docker` CLI to spawn per-submission sandbox containers, and keeping it native avoids a host-path-vs-container-path mismatch that containerizing it would introduce (see `docker-compose.yml`'s comment for the full reasoning). Nginx serves the built client and reverse-proxies `/api` and `/socket.io` to the PM2 process, and terminates TLS.
 
-**Scaling note**: this app runs as exactly one server instance by design - matchmaking queue and battle room state live in that process's memory (`server/sockets/state.js`), not in a shared store. Do not run multiple instances or PM2 cluster mode; do not put this behind a load balancer with more than one backend without first moving that state into Redis.
+**Scaling note**: this app runs as exactly one server instance by design - matchmaking queue and battle room state live in that process's memory (`server/features/battles/state.js`), not in a shared store. Do not run multiple instances or PM2 cluster mode; do not put this behind a load balancer with more than one backend without first moving that state into Redis.
 
 **What I could and couldn't verify**: every command below was checked against how this app actually behaves - real Mongo, real Docker, real Socket.io - in this session (matchmaking, battle, chat, submission were all run end-to-end). I do not have a real VPS to run this exact runbook against, so treat step 10 (smoke test) as the real gate before calling a deployment done, not this document by itself.
 
@@ -67,7 +67,7 @@ Bound to `127.0.0.1:27017` only (see `docker-compose.yml`) - not reachable from 
 cd server
 npm ci
 
-# One-time (and again any time a Dockerfile under server/docker/images/
+# One-time (and again any time a Dockerfile under server/features/execution/images/
 # changes) - the judge assumes these images already exist, it never builds
 # them on demand.
 npm run docker:build
@@ -132,10 +132,10 @@ cd server && npm ci && cd ../client && npm ci && npm run build
 pm2 restart codearena-server
 ```
 
-Re-run `npm run docker:build` only if a sandbox Dockerfile changed; re-run `npm run seed-problems` any time you add problems to `server/scripts/seedProblems.js` (it will only insert the new ones).
+Re-run `npm run docker:build` only if a sandbox Dockerfile changed; re-run `npm run seed-problems` any time you add problems to `server/features/problems/seedProblems.js` (it will only insert the new ones).
 
 ## Logs
 
-- App logs: `server/logs/` (daily-rotating, 14-day retention - see `server/utils/logger.js`)
+- App logs: `server/logs/` (daily-rotating, 14-day retention - see `server/core/utils/logger.js`)
 - PM2 logs: `pm2 logs codearena-server`, or the files configured in `deploy/ecosystem.config.js`
 - Nginx: `/var/log/nginx/access.log`, `/var/log/nginx/error.log`

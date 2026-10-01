@@ -30,4 +30,4 @@ Thumbs.db
 .idea/
 
 # Docker code-execution scratch space (created at runtime, never committed)
-server/docker/tmp/
+server/features/execution/tmp/

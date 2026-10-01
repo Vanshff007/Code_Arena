@@ -5,19 +5,19 @@ import morgan from 'morgan';
 import hpp from 'hpp';
 import mongoSanitize from 'express-mongo-sanitize';
 
-import env from './config/env.js';
-import logger from './utils/logger.js';
-import { notFound, errorHandler } from './middleware/errorHandler.js';
-import { apiLimiter } from './middleware/rateLimiters.js';
-import healthRoutes from './routes/health.routes.js';
-import authRoutes from './routes/auth.routes.js';
-import problemRoutes from './routes/problem.routes.js';
-import executionRoutes from './routes/execution.routes.js';
-import leaderboardRoutes from './routes/leaderboard.routes.js';
-import userRoutes from './routes/user.routes.js';
-import matchRoutes from './routes/match.routes.js';
-import leetcodeRoutes from './routes/leetcode.routes.js';
-import skillRoutes from './routes/skill.routes.js';
+import env from './core/config/env.js';
+import logger from './core/utils/logger.js';
+import { notFound, errorHandler } from './core/middleware/errorHandler.js';
+import { apiLimiter } from './core/middleware/rateLimiters.js';
+import healthRoutes from './features/health/health.routes.js';
+import authRoutes from './features/auth/auth.routes.js';
+import problemRoutes from './features/problems/problem.routes.js';
+import executionRoutes from './features/execution/execution.routes.js';
+import leaderboardRoutes from './features/leaderboard/leaderboard.routes.js';
+import userRoutes from './features/profiles/profile.routes.js';
+import matchRoutes from './features/battles/match.routes.js';
+import leetcodeRoutes from './features/leetcode/leetcode.routes.js';
+import skillRoutes from './features/skills/skill.routes.js';
 
 const app = express();
 

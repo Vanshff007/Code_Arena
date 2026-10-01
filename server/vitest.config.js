@@ -3,7 +3,8 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   test: {
     environment: 'node',
-    setupFiles: ['./tests/setup.js'],
+    setupFiles: ['./core/testSetup.js'],
+    include: ['features/**/*.test.js'],
     // The judge tests spin up real Docker containers; the matchmaking tests
     // wait through a real 5s countdown. Both are slow by nature, not by bug.
     testTimeout: 30000,

@@ -1,10 +1,10 @@
 import http from 'http';
 import { Server } from 'socket.io';
-import env from './config/env.js';
-import connectDB from './config/db.js';
-import logger from './utils/logger.js';
+import env from './core/config/env.js';
+import connectDB from './core/config/db.js';
+import logger from './core/utils/logger.js';
 import app from './app.js';
-import { registerSocketHandlers } from './sockets/index.js';
+import { registerSocketHandlers } from './features/battles/sockets.js';
 
 // Using an explicit http.Server (instead of app.listen directly) because
 // Socket.io needs to attach to this same server instance to share the port

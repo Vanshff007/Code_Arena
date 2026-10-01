@@ -1,65 +1,83 @@
 @import 'tailwindcss';
 
 /*
- * Design tokens. Tailwind v4 reads @theme and auto-generates utilities:
- * --color-background -> bg-background, --color-accent -> bg-accent/text-accent, etc.
- * Naming follows the shadcn/ui convention (bg-background, text-foreground,
- * border-border) so class names read naturally instead of "bg-bg"/"text-text".
+ * Design tokens. Tailwind v4 reads @theme and generates utilities from them
+ * (--color-p1 -> bg-p1 / text-p1 / border-p1, --font-wide -> font-wide).
+ *
+ * The whole look is built on one idea: a duel. Cobalt (p1) is always "you",
+ * crimson (p2) is always "the other side" - the opponent in a battle, a
+ * loss in history. Everything else stays neutral so those two colors carry
+ * meaning wherever they appear.
  */
 @theme {
-  --color-background: #f7f1e6; /* warm cream page background */
-  --color-surface: #efe4d1; /* navbar / secondary surfaces - a shade deeper */
-  --color-card: #fffcf6; /* card background - lightest, so cards pop off the cream page */
-  --color-border: #e1d2b8;
+  --color-paper: #e8eaef; /* page background - cool grey, not cream */
+  --color-panel: #f6f7f9; /* raised surfaces */
+  --color-sunk: #dde0e7; /* inset areas: tracks, inputs, code output */
+  --color-rule: #c4c9d3; /* 1px lines */
+  --color-ink: #15171f; /* primary text */
+  --color-muted: #5a6070; /* secondary text */
 
-  --color-accent: #6f4e37; /* coffee brown */
-  --color-accent-hover: #59402c;
-  --color-success: #3f7d4f;
-  --color-warning: #b8842e;
-  --color-error: #b3462c;
+  --color-p1: #2440d8; /* you - cobalt */
+  --color-p1-deep: #1a2fa8;
+  --color-p2: #d3203f; /* opponent - crimson */
+  --color-ok: #0f7f57; /* accepted */
+  --color-warn: #a96400; /* partial / pending */
 
-  --color-foreground: #3a2a1c; /* primary text - dark espresso, not pure black */
-  --color-muted: #8a7360; /* secondary text - warm brown-gray */
+  --font-sans: 'Archivo', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'Courier New', monospace;
 
-  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
-  --font-mono: 'Fira Code', ui-monospace, 'Courier New', monospace;
-
-  --animate-fade-in: fade-in 0.35s ease-out;
-  --animate-float: float 6s ease-in-out infinite;
+  --radius-ctl: 6px;
 }
 
-@keyframes float {
-  0%,
-  100% {
-    transform: translateY(0);
+@layer base {
+  html {
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-variation-settings: 'wdth' 100;
+    -webkit-font-smoothing: antialiased;
   }
-  50% {
-    transform: translateY(-10px);
+
+  body {
+    min-height: 100vh;
+    background: var(--color-paper);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-p1);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: color-mix(in srgb, var(--color-p1) 22%, transparent);
   }
 }
 
-@keyframes fade-in {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+/*
+ * Width is Archivo's expressive axis: wide + heavy for headlines (a fight
+ * poster), condensed for every number that changes (clocks, ratings,
+ * scores) so digits stay compact and tabular.
+ */
+@utility font-wide {
+  font-variation-settings: 'wdth' 125;
+  letter-spacing: -0.01em;
 }
 
-html {
-  font-family: var(--font-sans);
-  color-scheme: light;
+@utility font-tight {
+  font-variation-settings: 'wdth' 68;
+  font-variant-numeric: tabular-nums;
 }
 
-body {
-  margin: 0;
-  background: var(--color-background);
-  color: var(--color-foreground);
-  /* Safety net, not a fix for any specific layout - a stray fixed-width
-     element on some future page shouldn't be able to force a page-wide
-     horizontal scrollbar on a narrow phone. */
-  overflow-x: hidden;
+@utility num {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

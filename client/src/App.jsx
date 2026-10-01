@@ -1,121 +1,58 @@
-import { Routes, Route, useLocation } from 'react-router-dom';
-import { AnimatePresence, motion } from 'framer-motion';
-import Navbar from './components/Navbar';
-import ProtectedRoute from './components/ProtectedRoute';
-import Home from './pages/Home';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import Dashboard from './pages/Dashboard';
-import Problems from './pages/Problems';
-import ProblemSolve from './pages/ProblemSolve';
-import FindBattle from './pages/FindBattle';
-import BattleRoom from './pages/BattleRoom';
-import Leaderboard from './pages/Leaderboard';
-import MatchHistory from './pages/MatchHistory';
-import Profile from './pages/Profile';
-import SkillDashboard from './pages/SkillDashboard';
-import NotFound from './pages/NotFound';
+import { Routes, Route } from 'react-router-dom';
+import Navbar from './shared/layout/Navbar';
+import Footer from './shared/layout/Footer';
+import ProtectedRoute from './features/auth/ProtectedRoute';
+import LoginPage from './features/auth/LoginPage';
+import RegisterPage from './features/auth/RegisterPage';
+import HomePage from './features/home/HomePage';
+import NotFoundPage from './features/home/NotFoundPage';
+import DashboardPage from './features/dashboard/DashboardPage';
+import ProblemsPage from './features/problems/ProblemsPage';
+import ProblemSolvePage from './features/problems/ProblemSolvePage';
+import FindBattlePage from './features/battles/FindBattlePage';
+import BattleRoomPage from './features/battles/BattleRoomPage';
+import MatchHistoryPage from './features/battles/MatchHistoryPage';
+import LeaderboardPage from './features/leaderboard/LeaderboardPage';
+import ProfilePage from './features/profiles/ProfilePage';
+import SkillDashboardPage from './features/skills/SkillDashboardPage';
+
+const protectedRoutes = [
+  ['/dashboard', DashboardPage],
+  ['/problems', ProblemsPage],
+  ['/practice/:id', ProblemSolvePage],
+  ['/battle', FindBattlePage],
+  ['/battle/:roomCode', BattleRoomPage],
+  ['/leaderboard', LeaderboardPage],
+  ['/history', MatchHistoryPage],
+  ['/profile/:username', ProfilePage],
+  ['/skills', SkillDashboardPage],
+];
 
 function App() {
-  // AnimatePresence needs a stable key per route to know when to run the
-  // exit/enter transition - the pathname does that. Routes is passed the
-  // same frozen `location` (rather than letting it read the live browser
-  // location) so the outgoing page keeps rendering its own route, not the
-  // new one, while it plays its exit animation.
-  const location = useLocation();
-
   return (
-    <>
+    <div className="flex min-h-screen flex-col">
       <Navbar />
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={location.pathname}
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -8 }}
-          transition={{ duration: 0.18, ease: 'easeInOut' }}
-        >
-          <Routes location={location}>
-            <Route path="/" element={<Home />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
+      <div className="flex-1">
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          {protectedRoutes.map(([path, Page]) => (
             <Route
-              path="/dashboard"
+              key={path}
+              path={path}
               element={
                 <ProtectedRoute>
-                  <Dashboard />
+                  <Page />
                 </ProtectedRoute>
               }
             />
-            <Route
-              path="/problems"
-              element={
-                <ProtectedRoute>
-                  <Problems />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/practice/:id"
-              element={
-                <ProtectedRoute>
-                  <ProblemSolve />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/battle"
-              element={
-                <ProtectedRoute>
-                  <FindBattle />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/battle/:roomCode"
-              element={
-                <ProtectedRoute>
-                  <BattleRoom />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/leaderboard"
-              element={
-                <ProtectedRoute>
-                  <Leaderboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/history"
-              element={
-                <ProtectedRoute>
-                  <MatchHistory />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/profile/:username"
-              element={
-                <ProtectedRoute>
-                  <Profile />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/skills"
-              element={
-                <ProtectedRoute>
-                  <SkillDashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </motion.div>
-      </AnimatePresence>
-    </>
+          ))}
+          <Route path="*" element={<NotFoundPage />} />
+        </Routes>
+      </div>
+      <Footer />
+    </div>
   );
 }
 
