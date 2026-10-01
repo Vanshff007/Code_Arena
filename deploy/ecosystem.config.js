@@ -3,7 +3,7 @@
 //
 // instances: 1 / exec_mode: 'fork' is not the default choice, it's a
 // requirement - matchmaking queue and battle room state live in the Node
-// process's memory (server/sockets/state.js), not in Mongo or Redis.
+// process's memory (server/features/battles/state.js), not in Mongo or Redis.
 // Cluster mode or multiple instances would silently split traffic across
 // processes with different in-memory state, breaking matches unpredictably
 // rather than throwing an obvious error.

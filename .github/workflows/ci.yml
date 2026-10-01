@@ -61,5 +61,10 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      # Client tests read server source files (socket event names, language
+      # list) to catch contract drift, so the full checkout is needed.
+      - name: Tests
+        run: npm test
+
       - name: Production build
         run: npm run build
