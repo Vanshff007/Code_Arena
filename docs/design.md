@@ -29,6 +29,17 @@ screens (versus bar, split-color countdown); everything else is quiet.
 Use the generated utilities (`bg-panel`, `text-p1`, `border-rule`). Do not
 use raw hex values or Tailwind's default palette in components.
 
+### Dark mode
+
+The same tokens have dark values (`paper` `#13151c`, `panel` `#1b1e28`,
+`ink` `#e6e8ee`, `p1` `#5d76ff`, `p2` `#ff4f6d`, ...). They apply when
+`<html data-theme="dark">` is set, or when the device prefers dark and the
+user has not picked light. The choice (system, light, dark) is in Settings
+and stored in `localStorage` (`shared/theme.js`); `index.html` applies it
+before first paint. Monaco uses matching `arena` / `arena-dark` themes
+(`features/execution/languages.js`). Because components only use tokens,
+new screens get dark mode for free; check both modes before shipping.
+
 ## Type
 
 - **Archivo** (variable, Google Fonts) for all UI text. Its width axis is the

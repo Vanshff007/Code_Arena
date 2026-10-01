@@ -14,3 +14,12 @@ export function validateRegistration({ username = '', email = '', password = '',
 
   return errors;
 }
+
+export function validatePasswordChange({ currentPassword = '', newPassword = '', confirmPassword = '' }) {
+  const errors = {};
+  if (!currentPassword) errors.currentPassword = 'Enter your current password.';
+  if (newPassword.length < 6) errors.newPassword = 'Use at least 6 characters.';
+  else if (newPassword === currentPassword) errors.newPassword = 'Choose a different password.';
+  if (confirmPassword !== newPassword) errors.confirmPassword = 'Passwords do not match.';
+  return errors;
+}

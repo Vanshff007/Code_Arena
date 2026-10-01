@@ -3,9 +3,9 @@ import { describe, it, expect, vi } from 'vitest';
 vi.mock('../../shared/api', () => ({ default: { get: vi.fn(async () => ({ data: 'ok' })) } }));
 
 import api from '../../shared/api';
-import { getProblems, getProblemById } from './problemService';
+import { getProblems, getProblemById, getEditorial } from './problemService';
 import { difficultyLevel, filterProblems } from './difficulty';
-import { namedArguments, splitInlineCode } from './statement';
+import { namedArguments, splitInlineCode, editorialLanguages } from './statement';
 
 describe('problemService', () => {
   it('lists with filters and fetches one problem', async () => {
@@ -82,5 +82,17 @@ describe('statement helpers', () => {
     ]);
     expect(splitInlineCode('no code')).toEqual([{ code: false, text: 'no code' }]);
     expect(splitInlineCode()).toEqual([]);
+  });
+});
+
+describe('editorial helpers', () => {
+  it('lists languages that have a solution, in app order', () => {
+    expect(editorialLanguages({ solutions: { java: 'x', python: 'y', cpp: '  ' } })).toEqual(['python', 'java']);
+    expect(editorialLanguages(undefined)).toEqual([]);
+  });
+
+  it('fetches the editorial', async () => {
+    await getEditorial('p1');
+    expect(api.get).toHaveBeenCalledWith('/problems/p1/editorial');
   });
 });

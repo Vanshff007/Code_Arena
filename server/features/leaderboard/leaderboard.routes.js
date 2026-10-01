@@ -1,9 +1,11 @@
 import express from 'express';
-import { getLeaderboard } from './leaderboard.controller.js';
+import { getLeaderboard, listSeasons, getSeasonLeaderboard } from './leaderboard.controller.js';
 
 const router = express.Router();
 
-// Public - global ranking isn't sensitive information.
+// Public - rankings aren't sensitive information.
 router.get('/', getLeaderboard);
+router.get('/seasons', listSeasons);
+router.get('/seasons/:season', getSeasonLeaderboard);
 
 export default router;

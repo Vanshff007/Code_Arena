@@ -79,12 +79,21 @@ its information is needed.
 
 Never break these without explicit owner approval:
 
-- Never expose `hiddenTestCases` or `password` in any response, socket
-  event, or log.
+- Never expose `hiddenTestCases`, `password` or `tokenVersion` in any
+  response, socket event, or log.
+- Never send a player's battle code to spectators or the opponent during a
+  battle. Replays are for the two players only. Editorials stay hidden from
+  a player while their battle on that problem is live.
+- Admin problem changes that touch tests or the signature must pass a
+  reference solution on the judge.
 - Never loosen the sandbox container flags in
   `server/features/execution/engine/dockerRunner.js`.
-- The server runs as exactly one process. Battle and matchmaking state live
-  in memory (`server/features/battles/state.js`).
+- The server runs as exactly one process. Battle, matchmaking and presence
+  state live in memory (`server/features/battles/state.js`,
+  `server/core/presence.js`); only in-progress battles are copied to
+  `ActiveRoom` for restarts.
+- The session is an httpOnly cookie. The client and API must be served from
+  the same site; never store the token in `localStorage`.
 - Do not containerize the Node server. It must run natively next to Docker.
 - The submission tracking pipeline must never break the submit response.
 - LeetCode failures are normal outcomes and must never crash the app.

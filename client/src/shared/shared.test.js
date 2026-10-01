@@ -4,6 +4,7 @@ import { formatSigned, formatNumber, formatClock, formatDate } from './format';
 import { getErrorMessage } from './getErrorMessage';
 import { verdictTone } from './ui/verdict';
 import { APP_VERSION } from './version';
+import { THEME_KEY, readThemePreference, saveThemePreference, applyTheme, resolveDark } from './theme';
 
 describe('format', () => {
   it('always signs rating changes', () => {
@@ -59,5 +60,65 @@ describe('version rule', () => {
     const pkg = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8'));
     expect(APP_VERSION).toBe(pkg.version);
     expect(APP_VERSION).toMatch(/^\d+\.\d+\.\d+$/);
+  });
+});
+
+describe('theme', () => {
+  const store = () => {
+    const data = {};
+    return {
+      getItem: (k) => data[k] ?? null,
+      setItem: (k, v) => (data[k] = v),
+      removeItem: (k) => delete data[k],
+    };
+  };
+
+  it('saves and reads the preference, defaulting to system', () => {
+    const s = store();
+    expect(readThemePreference(s)).toBe('system');
+    saveThemePreference('dark', s);
+    expect(readThemePreference(s)).toBe('dark');
+    saveThemePreference('system', s);
+    expect(s.getItem(THEME_KEY)).toBeNull();
+  });
+
+  it('ignores unknown values and blocked storage', () => {
+    const s = store();
+    s.setItem(THEME_KEY, 'purple');
+    expect(readThemePreference(s)).toBe('system');
+    const blocked = { getItem: () => { throw new Error('blocked'); }, setItem: () => { throw new Error('blocked'); } };
+    expect(readThemePreference(blocked)).toBe('system');
+    expect(() => saveThemePreference('dark', blocked)).not.toThrow();
+  });
+
+  it('applies the theme attribute', () => {
+    const root = { dataset: {} };
+    applyTheme('dark', root);
+    expect(root.dataset.theme).toBe('dark');
+    applyTheme('system', root);
+    expect(root.dataset.theme).toBeUndefined();
+  });
+
+  it('resolves dark from preference and the device', () => {
+    expect(resolveDark('dark', false)).toBe(true);
+    expect(resolveDark('light', true)).toBe(false);
+    expect(resolveDark('system', true)).toBe(true);
+    expect(resolveDark('system', false)).toBe(false);
+  });
+});
+
+describe('api client', () => {
+  it('notifies listeners on a 401 and lets them unsubscribe', async () => {
+    const { default: api, onUnauthorized } = await import('./api');
+    let calls = 0;
+    const off = onUnauthorized(() => (calls += 1));
+    const reject = api.interceptors.response.handlers[0].rejected;
+    await expect(reject({ response: { status: 401 } })).rejects.toBeTruthy();
+    await expect(reject({ response: { status: 500 } })).rejects.toBeTruthy();
+    expect(calls).toBe(1);
+    off();
+    await expect(reject({ response: { status: 401 } })).rejects.toBeTruthy();
+    expect(calls).toBe(1);
+    expect(api.defaults.withCredentials).toBe(true);
   });
 });

@@ -2,7 +2,16 @@ import { useEffect, useState } from 'react';
 import Editor from '@monaco-editor/react';
 import { Play } from 'lucide-react';
 import { runCode, submitCode } from './executionService';
-import { LANGUAGES, MONACO_LANGUAGE, ARENA_THEME, EDITOR_OPTIONS, starterFor, defaultInputFor } from './languages';
+import {
+  LANGUAGES,
+  MONACO_LANGUAGE,
+  EDITOR_OPTIONS,
+  starterFor,
+  defaultInputFor,
+  defineArenaThemes,
+  editorThemeName,
+} from './languages';
+import { useTheme } from '../../shared/useTheme';
 import { getErrorMessage } from '../../shared/getErrorMessage';
 import useMediaQuery from '../../shared/useMediaQuery';
 import Button from '../../shared/ui/Button';
@@ -10,7 +19,6 @@ import Tag from '../../shared/ui/Tag';
 import { verdictTone } from '../../shared/ui/verdict';
 import VerdictPanel from './VerdictPanel';
 
-const defineTheme = (monaco) => monaco.editor.defineTheme('arena', ARENA_THEME);
 
 const inputHint = (problem) =>
   problem?.signature ? problem.signature.params.map((p) => p.name).join('\n') : 'Input for Run';
@@ -42,10 +50,12 @@ function RunOutput({ output }) {
 // Editor, Run, Submit, custom input/output and the verdict - shared by
 // practice mode and battles. For function-style problems the editor starts
 // from the problem's Solution stub (no headers, no main). `submitExtras`
-// adds fields to the submit body (roomCode, startedAt); `onCodeChange` lets
-// a battle send the typing indicator.
+// adds fields to the submit body (roomCode, startedAt); `onCodeChange`
+// (code, language) lets a battle send the typing indicator and replay
+// snapshots.
 function CodeWorkspace({ problem, submitExtras, onCodeChange, onVerdict, disabled = false }) {
   const isMobile = useMediaQuery('(max-width: 639px)');
+  const { isDark } = useTheme();
   const [language, setLanguage] = useState('cpp');
   const [code, setCode] = useState(() => starterFor(problem, 'cpp'));
   const [input, setInput] = useState(() => defaultInputFor(problem));
@@ -73,11 +83,12 @@ function CodeWorkspace({ problem, submitExtras, onCodeChange, onVerdict, disable
     }
     setLanguage(id);
     setCode(starterFor(problem, id));
+    onCodeChange?.(starterFor(problem, id), id);
   };
 
   const handleChange = (value) => {
     setCode(value ?? '');
-    onCodeChange?.();
+    onCodeChange?.(value ?? '', language);
   };
 
   const handleRun = async () => {
@@ -118,7 +129,7 @@ function CodeWorkspace({ problem, submitExtras, onCodeChange, onVerdict, disable
               aria-checked={language === l.id}
               onClick={() => changeLanguage(l.id)}
               className={`px-3 py-1.5 text-sm font-semibold ${
-                language === l.id ? 'bg-ink text-white' : 'text-muted hover:text-ink'
+                language === l.id ? 'bg-ink text-paper' : 'text-muted hover:text-ink'
               }`}
             >
               {l.label}
@@ -143,8 +154,8 @@ function CodeWorkspace({ problem, submitExtras, onCodeChange, onVerdict, disable
           language={MONACO_LANGUAGE[language]}
           value={code}
           onChange={handleChange}
-          beforeMount={defineTheme}
-          theme="arena"
+          beforeMount={defineArenaThemes}
+          theme={editorThemeName(isDark)}
           options={{ ...EDITOR_OPTIONS, readOnly: disabled }}
         />
       </div>

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { NavLink, Link } from 'react-router-dom';
-import { Menu, X } from 'lucide-react';
+import { Menu, Settings, X } from 'lucide-react';
 import { useAuth } from '../../features/auth/useAuth';
 import { formatNumber } from '../format';
 import Logo from '../ui/Logo';
@@ -8,11 +8,17 @@ import { buttonClass } from '../ui/buttonClass';
 
 const APP_LINKS = [
   { to: '/battle', label: 'Battle' },
+  { to: '/watch', label: 'Watch' },
   { to: '/problems', label: 'Practice' },
   { to: '/leaderboard', label: 'Rankings' },
   { to: '/history', label: 'History' },
   { to: '/skills', label: 'Skills' },
+  { to: '/friends', label: 'Friends' },
 ];
+
+const ADMIN_LINK = { to: '/admin/problems', label: 'Admin' };
+
+const linksFor = (user) => (user?.role === 'admin' ? [...APP_LINKS, ADMIN_LINK] : APP_LINKS);
 
 // Active page gets a cobalt underline sitting on the bar's bottom rule.
 const linkClass = ({ isActive }) =>
@@ -37,11 +43,11 @@ function Navbar() {
           <Logo />
         </Link>
 
-        <div className="hidden flex-1 items-center md:flex">
-          {user && APP_LINKS.map((l) => <NavLink key={l.to} to={l.to} className={linkClass}>{l.label}</NavLink>)}
+        <div className="hidden flex-1 items-center lg:flex">
+          {user && linksFor(user).map((l) => <NavLink key={l.to} to={l.to} className={linkClass}>{l.label}</NavLink>)}
         </div>
 
-        <div className="hidden items-center gap-4 md:flex">
+        <div className="hidden items-center gap-4 lg:flex">
           {user ? (
             <>
               <Link
@@ -51,6 +57,9 @@ function Navbar() {
               >
                 <span className="font-semibold">{user.username}</span>
                 <span className="font-tight text-base font-bold text-p1">{formatNumber(user.rating)}</span>
+              </Link>
+              <Link to="/settings" className="text-muted hover:text-ink" aria-label="Settings" title="Settings">
+                <Settings className="size-4" />
               </Link>
               <button onClick={logout} className="text-sm text-muted hover:text-ink">
                 Log out
@@ -72,24 +81,27 @@ function Navbar() {
           onClick={() => setOpen((v) => !v)}
           aria-label={open ? 'Close menu' : 'Open menu'}
           aria-expanded={open}
-          className="-mr-2 p-2 text-ink md:hidden"
+          className="-mr-2 p-2 text-ink lg:hidden"
         >
           {open ? <X className="size-5" /> : <Menu className="size-5" />}
         </button>
       </div>
 
       {open && (
-        <div className="border-t border-rule px-4 pb-4 pt-2 md:hidden">
+        <div className="border-t border-rule px-4 pb-4 pt-2 lg:hidden">
           <div className="flex flex-col">
             {user ? (
               <>
-                {APP_LINKS.map((l) => (
+                {linksFor(user).map((l) => (
                   <NavLink key={l.to} to={l.to} className={mobileLinkClass} onClick={close}>
                     {l.label}
                   </NavLink>
                 ))}
                 <NavLink to={`/profile/${user.username}`} className={mobileLinkClass} onClick={close}>
                   Profile
+                </NavLink>
+                <NavLink to="/settings" className={mobileLinkClass} onClick={close}>
+                  Settings
                 </NavLink>
                 <button
                   onClick={() => {

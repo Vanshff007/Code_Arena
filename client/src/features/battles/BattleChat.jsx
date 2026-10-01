@@ -3,7 +3,7 @@ import Button from '../../shared/ui/Button';
 
 // Room chat. Your messages sit on the left in cobalt, the opponent's in
 // crimson - same sides as the versus bar.
-function BattleChat({ messages, selfName, opponentName, onSend }) {
+function BattleChat({ messages, selfName, opponentName, onSend, notice, readOnly = false, title }) {
   const [text, setText] = useState('');
   const listRef = useRef(null);
 
@@ -20,19 +20,21 @@ function BattleChat({ messages, selfName, opponentName, onSend }) {
 
   return (
     <section aria-label="Chat" className="border border-rule bg-panel">
-      <h2 className="border-b border-rule px-4 py-2.5 text-sm font-bold">Chat with {opponentName ?? 'your opponent'}</h2>
+      <h2 className="border-b border-rule px-4 py-2.5 text-sm font-bold">{title ?? `Chat with ${opponentName ?? 'your opponent'}`}</h2>
       <div ref={listRef} className="h-40 space-y-1.5 overflow-y-auto px-4 py-3 text-sm" aria-live="polite">
         {messages.length === 0 && <p className="text-muted">No messages yet.</p>}
         {messages.map((m, i) => {
           const mine = m.username === selfName;
           return (
             <p key={i} className="break-words">
-              <span className={`mr-2 font-bold ${mine ? 'text-p1' : 'text-p2'}`}>{mine ? 'You' : m.username}</span>
+              <span className={`mr-2 font-bold ${mine ? 'text-p1' : 'text-p2'}`}>{mine && !readOnly ? 'You' : m.username}</span>
               {m.message}
             </p>
           );
         })}
       </div>
+      {notice && <p className="border-t border-rule px-4 py-2 text-xs text-p2">{notice}</p>}
+      {readOnly ? null : (
       <form onSubmit={submit} className="flex gap-2 border-t border-rule p-2">
         <label className="sr-only" htmlFor="chat-input">
           Message
@@ -49,6 +51,7 @@ function BattleChat({ messages, selfName, opponentName, onSend }) {
           Send
         </Button>
       </form>
+      )}
     </section>
   );
 }

@@ -5,6 +5,7 @@ import connectDB from './core/config/db.js';
 import logger from './core/utils/logger.js';
 import app from './app.js';
 import { registerSocketHandlers } from './features/battles/sockets.js';
+import { restoreActiveBattles } from './features/battles/roomManager.js';
 
 // Using an explicit http.Server (instead of app.listen directly) because
 // Socket.io needs to attach to this same server instance to share the port
@@ -22,6 +23,9 @@ registerSocketHandlers(io);
 
 async function start() {
   await connectDB();
+  // Battles that were in progress when the server stopped pick up where
+  // they left off (players rejoin when their browsers reconnect).
+  await restoreActiveBattles().catch((err) => logger.error(`Restoring battles failed: ${err.message}`));
 
   server.listen(env.port, () => {
     logger.info(`CodeArena server running in ${env.nodeEnv} mode on port ${env.port}`);

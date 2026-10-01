@@ -37,7 +37,7 @@ function ProblemsPage() {
               role="radio"
               aria-checked={difficulty === f}
               onClick={() => setDifficulty(f)}
-              className={`px-3 py-1.5 text-sm font-semibold ${difficulty === f ? 'bg-ink text-white' : 'text-muted hover:text-ink'}`}
+              className={`px-3 py-1.5 text-sm font-semibold ${difficulty === f ? 'bg-ink text-paper' : 'text-muted hover:text-ink'}`}
             >
               {f}
             </button>

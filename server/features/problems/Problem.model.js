@@ -93,6 +93,21 @@ const problemSchema = new mongoose.Schema(
         message: (props) => validateSignature(props.value?.toObject ? props.value.toObject() : props.value).join('; '),
       },
     },
+    // How to solve it: shown after a battle ends, or in practice when the
+    // player chooses to (that lowers their points - see EditorialView).
+    // Never sent with the problem itself.
+    editorial: {
+      type: {
+        approach: { type: String, default: '' },
+        solutions: {
+          cpp: { type: String, default: '' },
+          java: { type: String, default: '' },
+          python: { type: String, default: '' },
+        },
+      },
+      select: false,
+      default: undefined,
+    },
     // 'any' accepts the returned arrays in any order (e.g. 3Sum triplets).
     outputOrder: { type: String, enum: ['exact', 'any'], default: 'exact' },
     createdBy: {
@@ -116,6 +131,7 @@ problemSchema.set('toJSON', {
   transform: (doc, ret) => {
     delete ret.id;
     delete ret.hiddenTestCases;
+    delete ret.editorial;
     delete ret.__v;
     return ret;
   },

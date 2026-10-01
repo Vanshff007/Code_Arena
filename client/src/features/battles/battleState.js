@@ -11,6 +11,15 @@ export const EVENTS = {
   queueLeave: 'matchmaking:leave',
   chatSend: 'chat:send',
   typing: 'battle:typing',
+  snapshot: 'battle:snapshot',
+  claim: 'battle:claim',
+  rematchRequest: 'rematch:request',
+  rematchAccept: 'rematch:accept',
+  rematchDecline: 'rematch:decline',
+  spectateJoin: 'spectate:join',
+  spectateLeave: 'spectate:leave',
+  friendChallenge: 'friend:challenge',
+  friendChallengeDecline: 'friend:challengeDecline',
 
   roomState: 'room:state',
   roomCreated: 'room:created',
@@ -27,6 +36,23 @@ export const EVENTS = {
   resume: 'battle:resume',
   end: 'battle:end',
   chatMessage: 'chat:message',
+  chatRateLimited: 'chat:rateLimited',
+  takenOver: 'battle:takenOver',
+  rematchRequested: 'rematch:requested',
+  rematchPending: 'rematch:pending',
+  rematchDeclined: 'rematch:declined',
+  rematchUnavailable: 'rematch:unavailable',
+  rematchStart: 'rematch:start',
+  spectateState: 'spectate:state',
+  spectateError: 'spectate:error',
+  progress: 'battle:progress',
+  playerTyping: 'battle:typing',
+  friendRequest: 'friend:request',
+  friendAccepted: 'friend:accepted',
+  friendChallenged: 'friend:challenged',
+  friendChallengeSent: 'friend:challengeSent',
+  friendChallengeDeclined: 'friend:challengeDeclined',
+  friendChallengeError: 'friend:challengeError',
 };
 
 export const ROOM_CODE_LENGTH = 6;
@@ -68,6 +94,17 @@ export function summarizeMatches(matches = []) {
     summary.ratingChange += Number(m.ratingChange) || 0;
   }
   return summary;
+}
+
+// Splits the server's per-player progress (battle:resume, spectate:state)
+// into this player's and the opponent's, in VersusBar's shape. A player
+// who has not submitted yet has no progress (null).
+export function progressFromResume(progress = [], userId) {
+  const toBar = (p) => (p && p.totalCount ? { passedCount: p.passedCount, totalCount: p.totalCount, verdict: p.verdict } : null);
+  return {
+    self: toBar(progress.find((p) => p.userId === userId)),
+    opponent: toBar(progress.find((p) => p.userId !== userId)),
+  };
 }
 
 export const OUTCOME_TEXT = {

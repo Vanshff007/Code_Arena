@@ -1,5 +1,5 @@
 import { useContext } from 'react';
-import { SocketContext } from './SocketContext';
+import { SocketContext } from './socketContext';
 
 // Returns null until the socket has connected (or if the user is logged
 // out) - callers should treat a null socket as "not ready yet", same

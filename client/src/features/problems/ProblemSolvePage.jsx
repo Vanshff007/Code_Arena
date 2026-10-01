@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { getProblemById } from './problemService';
 import ProblemStatement from './ProblemStatement';
+import EditorialPanel from './EditorialPanel';
 import CodeWorkspace from '../execution/CodeWorkspace';
 import { ErrorNote } from '../../shared/ui/PageHeader';
 import { PageSpinner } from '../../shared/ui/Spinner';
@@ -45,6 +46,9 @@ function ProblemSolvePage() {
           Practice
         </Link>
         <ProblemStatement problem={problem} />
+        <div className="mt-8">
+          <EditorialPanel problemId={id} warn />
+        </div>
       </div>
       <CodeWorkspace problem={problem} submitExtras={() => ({ startedAt: startedAtRef.current })} />
     </main>

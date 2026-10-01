@@ -54,6 +54,37 @@ export const ARENA_THEME = {
   },
 };
 
+// Night version for dark mode (values from the dark tokens in index.css).
+export const ARENA_THEME_DARK = {
+  base: 'vs-dark',
+  inherit: true,
+  rules: [
+    { token: 'keyword', foreground: '8fa2ff', fontStyle: 'bold' },
+    { token: 'type', foreground: 'b3c0ff' },
+    { token: 'string', foreground: '5fd8a3' },
+    { token: 'number', foreground: 'ff7d93' },
+    { token: 'comment', foreground: '8a91a3', fontStyle: 'italic' },
+  ],
+  colors: {
+    'editor.background': '#1b1e28',
+    'editor.foreground': '#e6e8ee',
+    'editor.lineHighlightBackground': '#232735',
+    'editorLineNumber.foreground': '#5c6375',
+    'editorLineNumber.activeForeground': '#e6e8ee',
+    'editorCursor.foreground': '#8fa2ff',
+    'editor.selectionBackground': '#5d76ff44',
+    'editorIndentGuide.background1': '#2e3342',
+  },
+};
+
+// Registers both editor themes; pass to Monaco's beforeMount.
+export function defineArenaThemes(monaco) {
+  monaco.editor.defineTheme('arena', ARENA_THEME);
+  monaco.editor.defineTheme('arena-dark', ARENA_THEME_DARK);
+}
+
+export const editorThemeName = (isDark) => (isDark ? 'arena-dark' : 'arena');
+
 export const EDITOR_OPTIONS = {
   fontSize: 14,
   fontFamily: "'JetBrains Mono', ui-monospace, monospace",

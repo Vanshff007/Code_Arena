@@ -6,9 +6,10 @@ The code workspace shared by practice and battles.
 
 | File | Job |
 |---|---|
-| `CodeWorkspace.jsx` | Language switch, Monaco editor, Run, Submit, custom input, output. |
+| `CodeWorkspace.jsx` | Language switch, Monaco editor (follows the light/dark theme), Run, Submit, custom input, output. `onCodeChange(code, language)` feeds battle snapshots. |
+| `CodeView.jsx` | Read-only Monaco view, used by replays. |
 | `VerdictPanel.jsx` | Submit result: verdict, pips, runtime/memory, failing public case, points, XP, coach notes. |
-| `languages.js` | Supported languages (must match the server), `starterFor` (problem stub or full-program template), `defaultInputFor`, editor theme and options. |
+| `languages.js` | Supported languages (must match the server), `starterFor` (problem stub or full-program template), `defaultInputFor`, light and dark editor themes and options. |
 | `executionService.js` | `/execute/run`, `/execute/submit`. |
 | `execution.test.js` | Service contract, templates, and a check that the language list matches the server validator. |
 

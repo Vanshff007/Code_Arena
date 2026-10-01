@@ -21,3 +21,9 @@ export function splitInlineCode(text = '') {
         : { code: false, text: part }
     );
 }
+
+// Languages an editorial has a solution for, in the app's language order.
+export function editorialLanguages(editorial) {
+  const solutions = editorial?.solutions ?? {};
+  return ['python', 'cpp', 'java'].filter((id) => solutions[id]?.trim());
+}
