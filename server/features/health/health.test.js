@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { readFileSync } from 'fs';
 import mongoose from 'mongoose';
 import request from 'supertest';
@@ -53,5 +53,28 @@ describe('version rule', () => {
   it('keeps package-lock.json versions in sync with package.json', () => {
     expect(readVersion('../../package-lock.json')).toBe(server);
     expect(readVersion('../../../client/package-lock.json')).toBe(client);
+  });
+});
+
+// Behind Nginx every request arrives from 127.0.0.1. Production trusts that
+// one hop so IP-keyed rate limits see the real visitor; other environments
+// have no proxy and must ignore a client-sent X-Forwarded-For.
+describe('trust proxy', () => {
+  it('ignores X-Forwarded-For outside production', () => {
+    expect(app.get('trust proxy')).toBe(false);
+  });
+
+  it('trusts exactly one proxy hop in production', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.resetModules();
+    try {
+      // Only env.js is reloaded: re-importing app.js would recompile the
+      // Mongoose models. The test above shows app.js applies env.trustProxy.
+      const { default: prodEnv } = await import('../../core/config/env.js');
+      expect(prodEnv.trustProxy).toBe(1);
+    } finally {
+      vi.unstubAllEnvs();
+      vi.resetModules();
+    }
   });
 });

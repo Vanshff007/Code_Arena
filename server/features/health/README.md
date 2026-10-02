@@ -8,4 +8,5 @@ warning when it differs from the client version.
 
 `health.test.js`: health response, version matches `package.json`, unknown
 route returns 404 JSON, and the version rule (semver format, client and
-server versions equal, lock files in sync).
+server versions equal, lock files in sync), and `trust proxy` (off outside
+production, one hop in production).

@@ -49,6 +49,11 @@ Mongo error `11000`), 429 (rate limit), 503 (judge queue full), 500.
 | `authLimiter` | Register, login and password change | 10 per 15 min |
 | `executeLimiter` | Run, submit, and admin problem create/update/check, per user | 20 per 5 min |
 
+Per-IP limits use `req.ip`. In production the app trusts one proxy hop
+(`trust proxy` = 1, set from `env.trustProxy` in `server/core/config/env.js`),
+so `req.ip` is the visitor's IP from Nginx's `X-Forwarded-For`. In other
+environments the header is ignored.
+
 Socket events have their own per-socket limits in
 `server/core/socketLimits.js` (for example `chat:send` 5 per 10 s,
 `friend:challenge` 5 per 30 s, others 20 per 10 s by default). Events over
