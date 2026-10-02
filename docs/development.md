@@ -89,7 +89,7 @@ Server (`server/features/*/*.test.js`, Vitest + supertest + socket.io-client):
 | Feature | Covers |
 |---|---|
 | `auth` | Register, duplicate email, login, wrong password, `/me` |
-| `problems` | CRUD, admin checks, hidden test cases never returned; `seed.test.js` judges every built-in problem with reference solutions (Python all 20, C++ and Java 8 each) |
+| `problems` | CRUD, admin checks, hidden test cases never returned; `seed.test.js` judges every built-in problem with reference solutions (Python all 60, C++ and Java 14 each, covering every type in the bank) |
 | `execution` | Real Docker judge (full-program and function-style), compile error line mapping, Run result vs prints, bad input message, hidden case not leaked; `harness.test.js` covers the harness without Docker |
 | `battles` | Queue, room, countdown, battle start (empty problem bank regression), ELO math, queueing again after a finished battle |
 | `leaderboard` | Ordering, ranks, win rate, limit, no private fields |

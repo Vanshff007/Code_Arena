@@ -12,9 +12,9 @@ admin API behind the problem editor.
 | `problem.routes.js` | `/api/problems` routes. |
 | `problem.controller.js` | List, get, editorial, and admin check/create/update/delete. Admin writes run the reference solution through the judge first. |
 | `problem.validator.js` | Validation for create, update and check (signature, tests, reference solution, editorial). |
-| `seedData.js` | The 20 built-in problems in function (LeetCode) format: signature, JSON test cases. |
-| `referenceSolutions.js` | Known-correct solutions (Python for all, C++ and Java for 8). |
-| `editorials.js` | Approach text for the 20 built-in problems; solutions come from `referenceSolutions.js`. |
+| `seedData.js` | The 60 built-in problems in function (LeetCode) format: signature, JSON test cases. |
+| `referenceSolutions.js` | Known-correct solutions (Python for all, C++ and Java for 14 that together use every type in the bank). |
+| `editorials.js` | Approach text for the 60 built-in problems; solutions come from `referenceSolutions.js`. |
 | `seedProblems.js` | `npm run seed-problems` inserts missing problems; `-- --update` overwrites built-in ones by title (ids kept), editorials included. |
 | `seed.test.js` | Judges every built-in problem with its reference solutions through the real judge. |
 | `problems.test.js` | Automated tests. |

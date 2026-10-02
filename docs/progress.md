@@ -1,6 +1,6 @@
 # Progress
 
-Last updated: 2026-10-01. Current version: 1.4.0.
+Last updated: 2026-10-02. Current version: 1.5.0.
 
 ## Status
 
@@ -74,6 +74,10 @@ configuration (`docker-compose.yml`, `deploy/`) and the runbook
   that must pass the judge before saving.
 - 1.4.0, housekeeping: the 2 lint warnings are gone (`AuthContext` and
   `SocketContext` split from their providers).
+- 1.5.0, more problems: 40 new built-in problems (14 Easy, 16 Medium,
+  10 Hard), 60 in total, each with a verified Python reference solution and
+  an editorial. C++ and Java references now cover every parameter and
+  return type in the bank (checked by a test).
 
 ## In progress / pending
 
@@ -81,8 +85,8 @@ configuration (`docker-compose.yml`, `deploy/`) and the runbook
 
 ## Planned / ideas
 
-Ordered by priority. Recommended next three: deploy and smoke test, more
-problems, then client component tests.
+Ordered by priority. Recommended next three: deploy and smoke test, client
+component tests, then in-place problems.
 
 ### 1. Do first
 
@@ -90,9 +94,8 @@ problems, then client component tests.
   run its smoke test (section 9). The 1.3.1 Linux bug shows the runbook needs
   a real run before anyone relies on it. The client and API must be on the
   same site now that the session is a cookie.
-- **More problems.** 20 is too few; battles will repeat, and the rating
-  bands split them further. Aim for 60+ across topics and difficulties.
-  The admin page makes this a content task.
+- **More problems over time.** 60 built-in problems now; keep adding
+  through the admin page, especially Hard ones (15 so far).
 
 ### 2. Judge
 
@@ -125,8 +128,8 @@ problems, then client component tests.
   session).
 - Updating to 1.4.0 logs everyone out once (sessions moved from
   `localStorage` to a cookie).
-- With few problems per difficulty, the rating bands fall back to any
-  difficulty when a band is empty.
+- The built-in bank has 21 Easy, 24 Medium and 15 Hard problems, so
+  players in the same rating band still see repeats over many battles.
 - LeetCode data needs a public profile and comes from an unofficial
   endpoint that can break or be blocked at any time. "Currently solving"
   topics come from the ~20 most recent accepted submissions; the full list

@@ -231,6 +231,408 @@ export const PYTHON = {
                 r -= 1
         return water
 `,
+  'Contains Duplicate': `class Solution:
+    def containsDuplicate(self, nums: List[int]) -> bool:
+        return len(set(nums)) != len(nums)
+`,
+  'Valid Anagram': `class Solution:
+    def isAnagram(self, s: str, t: str) -> bool:
+        return Counter(s) == Counter(t)
+`,
+  'Best Time to Buy and Sell Stock': `class Solution:
+    def maxProfit(self, prices: List[int]) -> int:
+        best, low = 0, float('inf')
+        for p in prices:
+            low = min(low, p)
+            best = max(best, p - low)
+        return best
+`,
+  'Maximum Depth of Binary Tree': `class Solution:
+    def maxDepth(self, root: Optional[TreeNode]) -> int:
+        if not root:
+            return 0
+        return 1 + max(self.maxDepth(root.left), self.maxDepth(root.right))
+`,
+  'Invert Binary Tree': `class Solution:
+    def invertTree(self, root: Optional[TreeNode]) -> Optional[TreeNode]:
+        if root:
+            root.left, root.right = self.invertTree(root.right), self.invertTree(root.left)
+        return root
+`,
+  'Reverse Linked List': `class Solution:
+    def reverseList(self, head: Optional[ListNode]) -> Optional[ListNode]:
+        prev = None
+        while head:
+            head.next, prev, head = prev, head, head.next
+        return prev
+`,
+  'Valid Palindrome': `class Solution:
+    def isPalindrome(self, s: str) -> bool:
+        t = [c.lower() for c in s if c.isalnum()]
+        return t == t[::-1]
+`,
+  'Missing Number': `class Solution:
+    def missingNumber(self, nums: List[int]) -> int:
+        n = len(nums)
+        return n * (n + 1) // 2 - sum(nums)
+`,
+  'Single Number': `class Solution:
+    def singleNumber(self, nums: List[int]) -> int:
+        return reduce(lambda a, b: a ^ b, nums)
+`,
+  'Majority Element': `class Solution:
+    def majorityElement(self, nums: List[int]) -> int:
+        cand, count = 0, 0
+        for x in nums:
+            if count == 0:
+                cand = x
+            count += 1 if x == cand else -1
+        return cand
+`,
+  'Move Zeroes': `class Solution:
+    def moveZeroes(self, nums: List[int]) -> List[int]:
+        k = 0
+        for x in nums:
+            if x != 0:
+                nums[k] = x
+                k += 1
+        for i in range(k, len(nums)):
+            nums[i] = 0
+        return nums
+`,
+  'Fizz Buzz': `class Solution:
+    def fizzBuzz(self, n: int) -> List[str]:
+        out = []
+        for i in range(1, n + 1):
+            s = ('Fizz' if i % 3 == 0 else '') + ('Buzz' if i % 5 == 0 else '')
+            out.append(s or str(i))
+        return out
+`,
+  'Middle of the Linked List': `class Solution:
+    def middleNode(self, head: Optional[ListNode]) -> Optional[ListNode]:
+        slow = fast = head
+        while fast and fast.next:
+            slow, fast = slow.next, fast.next.next
+        return slow
+`,
+  'Pascal\'s Triangle': `class Solution:
+    def generate(self, numRows: int) -> List[List[int]]:
+        rows = [[1]]
+        for _ in range(numRows - 1):
+            prev = rows[-1]
+            rows.append([1] + [prev[i] + prev[i + 1] for i in range(len(prev) - 1)] + [1])
+        return rows
+`,
+  'Product of Array Except Self': `class Solution:
+    def productExceptSelf(self, nums: List[int]) -> List[int]:
+        n = len(nums)
+        out = [1] * n
+        left = 1
+        for i in range(n):
+            out[i] = left
+            left *= nums[i]
+        right = 1
+        for i in range(n - 1, -1, -1):
+            out[i] *= right
+            right *= nums[i]
+        return out
+`,
+  'Maximum Subarray': `class Solution:
+    def maxSubArray(self, nums: List[int]) -> int:
+        best = cur = nums[0]
+        for x in nums[1:]:
+            cur = max(x, cur + x)
+            best = max(best, cur)
+        return best
+`,
+  'Top K Frequent Elements': `class Solution:
+    def topKFrequent(self, nums: List[int], k: int) -> List[int]:
+        return [x for x, _ in Counter(nums).most_common(k)]
+`,
+  'Container With Most Water': `class Solution:
+    def maxArea(self, height: List[int]) -> int:
+        i, j, best = 0, len(height) - 1, 0
+        while i < j:
+            best = max(best, (j - i) * min(height[i], height[j]))
+            if height[i] < height[j]:
+                i += 1
+            else:
+                j -= 1
+        return best
+`,
+  'Coin Change': `class Solution:
+    def coinChange(self, coins: List[int], amount: int) -> int:
+        INF = amount + 1
+        dp = [0] + [INF] * amount
+        for a in range(1, amount + 1):
+            for c in coins:
+                if c <= a and dp[a - c] + 1 < dp[a]:
+                    dp[a] = dp[a - c] + 1
+        return dp[amount] if dp[amount] < INF else -1
+`,
+  'House Robber': `class Solution:
+    def rob(self, nums: List[int]) -> int:
+        take, skip = 0, 0
+        for x in nums:
+            take, skip = skip + x, max(take, skip)
+        return max(take, skip)
+`,
+  'Rotting Oranges': `class Solution:
+    def orangesRotting(self, grid: List[List[int]]) -> int:
+        m, n = len(grid), len(grid[0])
+        q = deque((i, j) for i in range(m) for j in range(n) if grid[i][j] == 2)
+        fresh = sum(row.count(1) for row in grid)
+        minutes = 0
+        while q and fresh:
+            for _ in range(len(q)):
+                i, j = q.popleft()
+                for a, b in ((i + 1, j), (i - 1, j), (i, j + 1), (i, j - 1)):
+                    if 0 <= a < m and 0 <= b < n and grid[a][b] == 1:
+                        grid[a][b] = 2
+                        fresh -= 1
+                        q.append((a, b))
+            minutes += 1
+        return -1 if fresh else minutes
+`,
+  'Validate Binary Search Tree': `class Solution:
+    def isValidBST(self, root: Optional[TreeNode]) -> bool:
+        def ok(node, lo, hi):
+            if not node:
+                return True
+            if not (lo < node.val < hi):
+                return False
+            return ok(node.left, lo, node.val) and ok(node.right, node.val, hi)
+        return ok(root, float('-inf'), float('inf'))
+`,
+  'Search in Rotated Sorted Array': `class Solution:
+    def search(self, nums: List[int], target: int) -> int:
+        lo, hi = 0, len(nums) - 1
+        while lo <= hi:
+            mid = (lo + hi) // 2
+            if nums[mid] == target:
+                return mid
+            if nums[lo] <= nums[mid]:
+                if nums[lo] <= target < nums[mid]:
+                    hi = mid - 1
+                else:
+                    lo = mid + 1
+            else:
+                if nums[mid] < target <= nums[hi]:
+                    lo = mid + 1
+                else:
+                    hi = mid - 1
+        return -1
+`,
+  'Palindromic Substrings': `class Solution:
+    def countSubstrings(self, s: str) -> int:
+        n, count = len(s), 0
+        for c in range(2 * n - 1):
+            i, j = c // 2, c // 2 + c % 2
+            while i >= 0 and j < n and s[i] == s[j]:
+                count += 1
+                i -= 1
+                j += 1
+        return count
+`,
+  'Daily Temperatures': `class Solution:
+    def dailyTemperatures(self, temperatures: List[int]) -> List[int]:
+        out = [0] * len(temperatures)
+        stack = []
+        for i, t in enumerate(temperatures):
+            while stack and temperatures[stack[-1]] < t:
+                j = stack.pop()
+                out[j] = i - j
+            stack.append(i)
+        return out
+`,
+  'Merge Intervals': `class Solution:
+    def merge(self, intervals: List[List[int]]) -> List[List[int]]:
+        out = []
+        for s, e in sorted(intervals):
+            if out and s <= out[-1][1]:
+                out[-1][1] = max(out[-1][1], e)
+            else:
+                out.append([s, e])
+        return out
+`,
+  'Word Break': `class Solution:
+    def wordBreak(self, s: str, wordDict: List[str]) -> bool:
+        words = set(wordDict)
+        ok = [True] + [False] * len(s)
+        for i in range(1, len(s) + 1):
+            ok[i] = any(ok[j] and s[j:i] in words for j in range(i))
+        return ok[len(s)]
+`,
+  'Unique Paths': `class Solution:
+    def uniquePaths(self, m: int, n: int) -> int:
+        row = [1] * n
+        for _ in range(m - 1):
+            for j in range(1, n):
+                row[j] += row[j - 1]
+        return row[-1]
+`,
+  'Permutations': `class Solution:
+    def permute(self, nums: List[int]) -> List[List[int]]:
+        return [list(p) for p in permutations(nums)]
+`,
+  'Decode Ways': `class Solution:
+    def numDecodings(self, s: str) -> int:
+        prev, cur = 1, 0 if s[0] == '0' else 1
+        for i in range(1, len(s)):
+            nxt = 0
+            if s[i] != '0':
+                nxt += cur
+            if 10 <= int(s[i - 1:i + 1]) <= 26:
+                nxt += prev
+            prev, cur = cur, nxt
+        return cur
+`,
+  'Median of Two Sorted Arrays': `class Solution:
+    def findMedianSortedArrays(self, nums1: List[int], nums2: List[int]) -> float:
+        a, b = nums1, nums2
+        if len(a) > len(b):
+            a, b = b, a
+        m, n = len(a), len(b)
+        half = (m + n + 1) // 2
+        lo, hi = 0, m
+        while True:
+            i = (lo + hi) // 2
+            j = half - i
+            al = a[i - 1] if i > 0 else float('-inf')
+            ar = a[i] if i < m else float('inf')
+            bl = b[j - 1] if j > 0 else float('-inf')
+            br = b[j] if j < n else float('inf')
+            if al <= br and bl <= ar:
+                if (m + n) % 2:
+                    return float(max(al, bl))
+                return (max(al, bl) + min(ar, br)) / 2
+            if al > br:
+                hi = i - 1
+            else:
+                lo = i + 1
+`,
+  'Edit Distance': `class Solution:
+    def minDistance(self, word1: str, word2: str) -> int:
+        m, n = len(word1), len(word2)
+        prev = list(range(n + 1))
+        for i in range(1, m + 1):
+            cur = [i] + [0] * n
+            for j in range(1, n + 1):
+                if word1[i - 1] == word2[j - 1]:
+                    cur[j] = prev[j - 1]
+                else:
+                    cur[j] = 1 + min(prev[j - 1], prev[j], cur[j - 1])
+            prev = cur
+        return prev[n]
+`,
+  'Largest Rectangle in Histogram': `class Solution:
+    def largestRectangleArea(self, heights: List[int]) -> int:
+        stack, best = [], 0
+        for i, h in enumerate(heights + [0]):
+            start = i
+            while stack and stack[-1][1] >= h:
+                j, hj = stack.pop()
+                best = max(best, hj * (i - j))
+                start = j
+            stack.append((start, h))
+        return best
+`,
+  'Minimum Window Substring': `class Solution:
+    def minWindow(self, s: str, t: str) -> str:
+        need = Counter(t)
+        missing = len(t)
+        start, end, i = 0, 0, 0
+        for j, c in enumerate(s, 1):
+            if need[c] > 0:
+                missing -= 1
+            need[c] -= 1
+            if missing == 0:
+                while need[s[i]] < 0:
+                    need[s[i]] += 1
+                    i += 1
+                if end == 0 or j - i < end - start:
+                    start, end = i, j
+                need[s[i]] += 1
+                missing += 1
+                i += 1
+        return s[start:end]
+`,
+  'Sliding Window Maximum': `class Solution:
+    def maxSlidingWindow(self, nums: List[int], k: int) -> List[int]:
+        dq, out = deque(), []
+        for i, x in enumerate(nums):
+            while dq and nums[dq[-1]] <= x:
+                dq.pop()
+            dq.append(i)
+            if dq[0] <= i - k:
+                dq.popleft()
+            if i >= k - 1:
+                out.append(nums[dq[0]])
+        return out
+`,
+  'Binary Tree Maximum Path Sum': `class Solution:
+    def maxPathSum(self, root: Optional[TreeNode]) -> int:
+        best = float('-inf')
+        def down(node):
+            nonlocal best
+            if not node:
+                return 0
+            l = max(down(node.left), 0)
+            r = max(down(node.right), 0)
+            best = max(best, node.val + l + r)
+            return node.val + max(l, r)
+        down(root)
+        return best
+`,
+  'Regular Expression Matching': `class Solution:
+    def isMatch(self, s: str, p: str) -> bool:
+        @lru_cache(None)
+        def m(i, j):
+            if j == len(p):
+                return i == len(s)
+            first = i < len(s) and p[j] in (s[i], '.')
+            if j + 1 < len(p) and p[j + 1] == '*':
+                return m(i, j + 2) or (first and m(i + 1, j))
+            return first and m(i + 1, j + 1)
+        return m(0, 0)
+`,
+  'First Missing Positive': `class Solution:
+    def firstMissingPositive(self, nums: List[int]) -> int:
+        n = len(nums)
+        for i in range(n):
+            while 1 <= nums[i] <= n and nums[nums[i] - 1] != nums[i]:
+                v = nums[i]
+                nums[i], nums[v - 1] = nums[v - 1], v
+        for i in range(n):
+            if nums[i] != i + 1:
+                return i + 1
+        return n + 1
+`,
+  'Longest Valid Parentheses': `class Solution:
+    def longestValidParentheses(self, s: str) -> int:
+        stack, best = [-1], 0
+        for i, c in enumerate(s):
+            if c == '(':
+                stack.append(i)
+            else:
+                stack.pop()
+                if not stack:
+                    stack.append(i)
+                else:
+                    best = max(best, i - stack[-1])
+        return best
+`,
+  'Burst Balloons': `class Solution:
+    def maxCoins(self, nums: List[int]) -> int:
+        a = [1] + nums + [1]
+        n = len(a)
+        dp = [[0] * n for _ in range(n)]
+        for gap in range(2, n):
+            for l in range(n - gap):
+                r = l + gap
+                dp[l][r] = max(a[l] * a[k] * a[r] + dp[l][k] + dp[k][r] for k in range(l + 1, r))
+        return dp[0][n - 1]
+`,
 };
 
 export const CPP = {
@@ -355,6 +757,81 @@ public:
     }
 };
 `,
+  'Invert Binary Tree': `class Solution {
+public:
+    TreeNode* invertTree(TreeNode* root) {
+        if (!root) return nullptr;
+        TreeNode* l = invertTree(root->left);
+        root->left = invertTree(root->right);
+        root->right = l;
+        return root;
+    }
+};
+`,
+  'Reverse Linked List': `class Solution {
+public:
+    ListNode* reverseList(ListNode* head) {
+        ListNode* prev = nullptr;
+        while (head) { ListNode* next = head->next; head->next = prev; prev = head; head = next; }
+        return prev;
+    }
+};
+`,
+  'Fizz Buzz': `class Solution {
+public:
+    vector<string> fizzBuzz(int n) {
+        vector<string> out;
+        for (int i = 1; i <= n; i++) {
+            if (i % 15 == 0) out.push_back("FizzBuzz");
+            else if (i % 3 == 0) out.push_back("Fizz");
+            else if (i % 5 == 0) out.push_back("Buzz");
+            else out.push_back(to_string(i));
+        }
+        return out;
+    }
+};
+`,
+  'Merge Intervals': `class Solution {
+public:
+    vector<vector<int>> merge(vector<vector<int>>& intervals) {
+        sort(intervals.begin(), intervals.end());
+        vector<vector<int>> out;
+        for (auto& iv : intervals) {
+            if (!out.empty() && iv[0] <= out.back()[1]) out.back()[1] = max(out.back()[1], iv[1]);
+            else out.push_back(iv);
+        }
+        return out;
+    }
+};
+`,
+  'Median of Two Sorted Arrays': `class Solution {
+public:
+    double findMedianSortedArrays(vector<int>& nums1, vector<int>& nums2) {
+        vector<int> all(nums1);
+        all.insert(all.end(), nums2.begin(), nums2.end());
+        sort(all.begin(), all.end());
+        int n = all.size();
+        return n % 2 ? all[n / 2] : (all[n / 2 - 1] + all[n / 2]) / 2.0;
+    }
+};
+`,
+  'Minimum Window Substring': `class Solution {
+public:
+    string minWindow(string s, string t) {
+        vector<int> need(128, 0);
+        for (char c : t) need[c]++;
+        int missing = t.size(), start = 0, best = INT_MAX, i = 0;
+        for (int j = 0; j < (int)s.size(); j++) {
+            if (need[s[j]]-- > 0) missing--;
+            while (missing == 0) {
+                if (j - i + 1 < best) { best = j - i + 1; start = i; }
+                if (++need[s[i++]] > 0) missing++;
+            }
+        }
+        return best == INT_MAX ? "" : s.substr(start, best);
+    }
+};
+`,
 };
 
 export const JAVA = {
@@ -475,6 +952,80 @@ public class Solution {
             }
         }
         return 0;
+    }
+}
+`,
+  'Invert Binary Tree': `class Solution {
+    public TreeNode invertTree(TreeNode root) {
+        if (root == null) return null;
+        TreeNode l = invertTree(root.left);
+        root.left = invertTree(root.right);
+        root.right = l;
+        return root;
+    }
+}
+`,
+  'Reverse Linked List': `class Solution {
+    public ListNode reverseList(ListNode head) {
+        ListNode prev = null;
+        while (head != null) { ListNode next = head.next; head.next = prev; prev = head; head = next; }
+        return prev;
+    }
+}
+`,
+  'Fizz Buzz': `class Solution {
+    public List<String> fizzBuzz(int n) {
+        List<String> out = new ArrayList<>();
+        for (int i = 1; i <= n; i++) {
+            if (i % 15 == 0) out.add("FizzBuzz");
+            else if (i % 3 == 0) out.add("Fizz");
+            else if (i % 5 == 0) out.add("Buzz");
+            else out.add(String.valueOf(i));
+        }
+        return out;
+    }
+}
+`,
+  'Merge Intervals': `class Solution {
+    public int[][] merge(int[][] intervals) {
+        Arrays.sort(intervals, (a, b) -> Integer.compare(a[0], b[0]));
+        List<int[]> out = new ArrayList<>();
+        for (int[] iv : intervals) {
+            if (!out.isEmpty() && iv[0] <= out.get(out.size() - 1)[1]) {
+                int[] last = out.get(out.size() - 1);
+                last[1] = Math.max(last[1], iv[1]);
+            } else {
+                out.add(new int[] { iv[0], iv[1] });
+            }
+        }
+        return out.toArray(new int[0][]);
+    }
+}
+`,
+  'Median of Two Sorted Arrays': `class Solution {
+    public double findMedianSortedArrays(int[] nums1, int[] nums2) {
+        int[] all = new int[nums1.length + nums2.length];
+        System.arraycopy(nums1, 0, all, 0, nums1.length);
+        System.arraycopy(nums2, 0, all, nums1.length, nums2.length);
+        Arrays.sort(all);
+        int n = all.length;
+        return n % 2 == 1 ? all[n / 2] : (all[n / 2 - 1] + all[n / 2]) / 2.0;
+    }
+}
+`,
+  'Minimum Window Substring': `class Solution {
+    public String minWindow(String s, String t) {
+        int[] need = new int[128];
+        for (char c : t.toCharArray()) need[c]++;
+        int missing = t.length(), start = 0, best = Integer.MAX_VALUE, i = 0;
+        for (int j = 0; j < s.length(); j++) {
+            if (need[s.charAt(j)]-- > 0) missing--;
+            while (missing == 0) {
+                if (j - i + 1 < best) { best = j - i + 1; start = i; }
+                if (++need[s.charAt(i++)] > 0) missing++;
+            }
+        }
+        return best == Integer.MAX_VALUE ? "" : s.substring(start, start + best);
     }
 }
 `,
