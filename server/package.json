@@ -1,6 +1,6 @@
 {
   "name": "codearena-server",
-  "version": "1.5.1",
+  "version": "1.5.2",
   "description": "CodeArena backend - REST API, Socket.io server, Docker-based code execution engine",
   "main": "server.js",
   "type": "module",
