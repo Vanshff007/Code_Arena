@@ -19,9 +19,9 @@ afterAll(async () => {
 });
 
 describe('seed data', () => {
-  it('has 20 problems with unique titles', () => {
-    expect(SEED_PROBLEMS).toHaveLength(20);
-    expect(new Set(SEED_PROBLEMS.map((p) => p.title)).size).toBe(20);
+  it('has 60 problems with unique titles', () => {
+    expect(SEED_PROBLEMS).toHaveLength(60);
+    expect(new Set(SEED_PROBLEMS.map((p) => p.title)).size).toBe(60);
   });
 
   it.each(SEED_PROBLEMS.map((p) => [p.title, p]))('%s has a valid signature and well-formed tests', (_, p) => {
@@ -34,6 +34,13 @@ describe('seed data', () => {
       for (const line of lines) expect(() => JSON.parse(line)).not.toThrow();
       expect(() => JSON.parse(tcase.output)).not.toThrow();
     }
+  });
+
+  it('has C++ and Java references covering every type used in the bank', () => {
+    const typesOf = (p) => [...p.signature.params.map((x) => `param ${x.type}`), `return ${p.signature.returnType}`];
+    const used = new Set(SEED_PROBLEMS.flatMap(typesOf));
+    const covered = new Set(SEED_PROBLEMS.filter((p) => CPP[p.title] && JAVA[p.title]).flatMap(typesOf));
+    expect([...used].filter((t) => !covered.has(t))).toEqual([]);
   });
 
   it('generates starter code for every language', () => {

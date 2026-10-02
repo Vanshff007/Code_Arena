@@ -30,6 +30,12 @@ const env = {
   clientUrls: (process.env.CLIENT_URL || 'http://localhost:5173').split(',').map((s) => s.trim()),
   jwtSecret: process.env.JWT_SECRET,
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
+  // In production the app sits behind exactly one Nginx hop (DEPLOYMENT.md).
+  // Trusting that one hop makes req.ip the real client IP from
+  // X-Forwarded-For, so IP-keyed rate limits are per visitor instead of one
+  // shared 127.0.0.1 bucket. Elsewhere no proxy exists, so the header is
+  // ignored and cannot be spoofed.
+  trustProxy: process.env.NODE_ENV === 'production' ? 1 : false,
 };
 
 export default env;

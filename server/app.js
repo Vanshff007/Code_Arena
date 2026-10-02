@@ -21,6 +21,7 @@ import skillRoutes from './features/skills/skill.routes.js';
 import friendRoutes from './features/friends/friends.routes.js';
 
 const app = express();
+app.set('trust proxy', env.trustProxy);
 
 // --- Security & parsing middleware ---
 app.use(helmet());

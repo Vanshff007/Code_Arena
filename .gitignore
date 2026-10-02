@@ -31,3 +31,7 @@ Thumbs.db
 
 # Docker code-execution scratch space (created at runtime, never committed)
 server/features/execution/tmp/
+
+# Private docs: only README.md files are published
+*.md
+!README.md
