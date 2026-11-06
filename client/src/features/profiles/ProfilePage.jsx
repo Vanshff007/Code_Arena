@@ -4,6 +4,7 @@ import { getProfileByUsername } from './profileService';
 import { useAuth } from '../auth/useAuth';
 import LeetCodePanel from '../leetcode/LeetCodePanel';
 import { formatDate, formatNumber, formatSigned } from '../../shared/format';
+import { tierFor } from '../../shared/tier';
 import { SectionTitle, EmptyState, ErrorNote } from '../../shared/ui/PageHeader';
 import { PageSpinner } from '../../shared/ui/Spinner';
 
@@ -50,7 +51,7 @@ function ProfilePage() {
           </p>
         </div>
         <div className="sm:text-right">
-          <p className="text-sm text-muted">Rating</p>
+          <p className="text-sm text-muted">Rating, {tierFor(user.rating)} tier</p>
           <p className="font-tight text-7xl font-black leading-none text-p1">{formatNumber(user.rating)}</p>
         </div>
       </header>

@@ -4,6 +4,7 @@ import { formatSigned, formatNumber, formatClock, formatDate } from './format';
 import { getErrorMessage } from './getErrorMessage';
 import { verdictTone } from './ui/verdict';
 import { APP_VERSION } from './version';
+import { tierFor } from './tier';
 import { THEME_KEY, readThemePreference, saveThemePreference, applyTheme, resolveDark } from './theme';
 
 describe('format', () => {
@@ -52,6 +53,24 @@ describe('verdictTone', () => {
     expect(verdictTone('Wrong Answer')).toBe('warn');
     expect(verdictTone('Compilation Error')).toBe('bad');
     expect(verdictTone(null)).toBe('muted');
+  });
+});
+
+describe('tierFor', () => {
+  it('maps ratings to tiers at the boundaries', () => {
+    expect(tierFor(1000)).toBe('Bronze');
+    expect(tierFor(1099)).toBe('Bronze');
+    expect(tierFor(1100)).toBe('Silver');
+    expect(tierFor(1300)).toBe('Gold');
+    expect(tierFor(1500)).toBe('Platinum');
+    expect(tierFor(1699)).toBe('Platinum');
+    expect(tierFor(1700)).toBe('Diamond');
+    expect(tierFor(2400)).toBe('Diamond');
+  });
+
+  it('treats a missing rating as Bronze', () => {
+    expect(tierFor(undefined)).toBe('Bronze');
+    expect(tierFor(-50)).toBe('Bronze');
   });
 });
 

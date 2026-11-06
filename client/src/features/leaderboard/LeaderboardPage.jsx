@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getLeaderboard, getSeasons, getSeasonLeaderboard } from './leaderboardService';
 import { ratingBarPercent, gapToNext } from './ladder';
+import { tierFor } from '../../shared/tier';
 import { useAuth } from '../auth/useAuth';
 import { formatNumber, formatSigned } from '../../shared/format';
 import PageHeader, { EmptyState, ErrorNote } from '../../shared/ui/PageHeader';
@@ -36,6 +37,7 @@ function AllTimeLadder({ rows, username }) {
             >
               {r.username}
               {isYou && <span className="ml-2 text-sm font-normal text-muted">(you)</span>}
+              <span className="ml-2 text-sm font-normal text-muted">{tierFor(r.rating)}</span>
             </Link>
             <span aria-hidden className="col-span-2 col-start-2 row-start-2 mt-2 pr-3 sm:col-span-1 sm:col-start-3 sm:row-start-1 sm:mt-0 sm:pr-0">
               <span className="block h-2 bg-sunk">

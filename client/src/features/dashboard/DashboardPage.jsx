@@ -7,6 +7,7 @@ import { getProfileByUsername } from '../profiles/profileService';
 import MatchRow from '../battles/MatchRow';
 import { pickRandom, winRate } from './dashboard';
 import { formatNumber } from '../../shared/format';
+import { tierFor } from '../../shared/tier';
 import Button, { ButtonLink } from '../../shared/ui/Button';
 import { SectionTitle, EmptyState } from '../../shared/ui/PageHeader';
 import Spinner from '../../shared/ui/Spinner';
@@ -60,6 +61,7 @@ function DashboardPage() {
           <p className="font-tight text-[7rem] font-black leading-[0.85] text-p1 sm:text-[9rem]">
             {formatNumber(user.rating)}
           </p>
+          <p className="mt-3 text-[15px] text-muted">{tierFor(user.rating)} tier</p>
         </div>
         <div className="flex flex-col gap-8 lg:items-end">
           <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
