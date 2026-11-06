@@ -360,6 +360,10 @@ async function startBattle(roomCode) {
       room.snapshots[p.userId] = [];
     }
 
+    // Saved before anyone is told the battle started, so a restart from here
+    // on always finds it in ActiveRoom.
+    await persistRoom(room);
+
     const io = getIO();
     io.to(roomCode).emit('battle:start', {
       roomCode,
@@ -371,8 +375,6 @@ async function startBattle(roomCode) {
       players: room.players.map(toPublicPlayer),
     });
     io.to(watchChannel(roomCode)).emit('spectate:state', spectatorState(room));
-
-    await persistRoom(room);
     startBattleClock(room);
   } catch (err) {
     logger.error(`[Battle] Failed to start battle for room ${roomCode}: ${err.message}`);
