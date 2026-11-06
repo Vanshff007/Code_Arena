@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AuthContext } from './authContext';
-import { loginUser, registerUser, getCurrentUser, logoutUser, logoutEverywhere } from './authService';
+import {
+  loginUser,
+  registerUser,
+  getCurrentUser,
+  logoutUser,
+  logoutEverywhere,
+  resetPassword as resetPasswordRequest,
+} from './authService';
 import { onUnauthorized } from '../../shared/api';
 
 // The session is an httpOnly cookie the page cannot read, so "am I logged
@@ -31,6 +38,12 @@ export function AuthProvider({ children }) {
     setUser(res.data.user);
   };
 
+  // A successful reset also starts a session (the server sets the cookie).
+  const resetPassword = async (payload) => {
+    const res = await resetPasswordRequest(payload);
+    setUser(res.data.user);
+  };
+
   const logout = useCallback(async () => {
     await logoutUser().catch(() => {});
     setUser(null);
@@ -50,7 +63,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, logoutAll, refreshUser }}>
+    <AuthContext.Provider value={{ user, loading, login, register, resetPassword, logout, logoutAll, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

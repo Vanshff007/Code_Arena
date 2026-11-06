@@ -23,3 +23,17 @@ export function validatePasswordChange({ currentPassword = '', newPassword = '',
   if (confirmPassword !== newPassword) errors.confirmPassword = 'Passwords do not match.';
   return errors;
 }
+
+export function validatePasswordReset({ password = '', confirmPassword = '' }) {
+  const errors = {};
+  if (password.length < 6) errors.password = 'Use at least 6 characters.';
+  if (confirmPassword !== password) errors.confirmPassword = 'Passwords do not match.';
+  return errors;
+}
+
+// The emailed link is /reset-password#token=<64 hex>. Returns the token, or
+// '' when the link is missing or mangled.
+export function readResetToken(hash = '') {
+  const token = new URLSearchParams(hash.replace(/^#/, '')).get('token') ?? '';
+  return /^[0-9a-f]{64}$/i.test(token) ? token : '';
+}

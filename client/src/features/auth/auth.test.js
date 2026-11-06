@@ -9,8 +9,17 @@ vi.mock('../../shared/api', () => ({
 }));
 
 import api from '../../shared/api';
-import { registerUser, loginUser, getCurrentUser, logoutUser, logoutEverywhere, changePassword } from './authService';
-import { validateRegistration, validatePasswordChange } from './validation';
+import {
+  registerUser,
+  loginUser,
+  getCurrentUser,
+  logoutUser,
+  logoutEverywhere,
+  changePassword,
+  requestPasswordReset,
+  resetPassword,
+} from './authService';
+import { validateRegistration, validatePasswordChange, validatePasswordReset, readResetToken } from './validation';
 
 beforeEach(() => vi.clearAllMocks());
 
@@ -24,6 +33,32 @@ describe('authService', () => {
 
     await getCurrentUser();
     expect(api.get).toHaveBeenCalledWith('/auth/me');
+  });
+});
+
+describe('password reset', () => {
+  const token = 'ab'.repeat(32);
+
+  it('calls the reset endpoints', async () => {
+    await requestPasswordReset('p@test.com');
+    expect(api.post).toHaveBeenCalledWith('/auth/forgot-password', { email: 'p@test.com' });
+    await resetPassword({ token, password: 'secret1' });
+    expect(api.post).toHaveBeenCalledWith('/auth/reset-password', { token, password: 'secret1' });
+  });
+
+  it('reads the token from the link fragment and rejects mangled links', () => {
+    expect(readResetToken(`#token=${token}`)).toBe(token);
+    expect(readResetToken(`token=${token}`)).toBe(token);
+    expect(readResetToken('#token=abc')).toBe('');
+    expect(readResetToken(`#token=${'zz'.repeat(32)}`)).toBe('');
+    expect(readResetToken('')).toBe('');
+    expect(readResetToken()).toBe('');
+  });
+
+  it('checks the new password and its confirmation', () => {
+    expect(validatePasswordReset({ password: 'secret1', confirmPassword: 'secret1' })).toEqual({});
+    expect(validatePasswordReset({ password: '123', confirmPassword: '123' }).password).toBeDefined();
+    expect(validatePasswordReset({ password: 'secret1', confirmPassword: 'secret2' }).confirmPassword).toBeDefined();
   });
 });
 

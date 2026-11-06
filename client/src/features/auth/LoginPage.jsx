@@ -65,6 +65,9 @@ function LoginPage() {
           autoComplete="current-password"
           trailing={<PasswordToggle shown={showPassword} onToggle={() => setShowPassword((s) => !s)} />}
         />
+        <Link to="/forgot-password" className="-mt-2 self-start text-sm font-semibold text-p1 hover:underline">
+          Forgot password?
+        </Link>
 
         {error && <ErrorNote>{error}</ErrorNote>}
 

@@ -1,6 +1,6 @@
 {
   "name": "codearena-server",
-  "version": "1.11.2",
+  "version": "1.12.0",
   "description": "CodeArena backend - REST API, Socket.io server, Docker-based code execution engine",
   "main": "server.js",
   "type": "module",
@@ -29,6 +29,7 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.8.3",
     "morgan": "^1.10.0",
+    "nodemailer": "^10.3.1",
     "socket.io": "^4.8.3",
     "winston": "^3.17.0",
     "winston-daily-rotate-file": "^5.0.0"
