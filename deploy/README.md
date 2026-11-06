@@ -9,6 +9,19 @@ private, not in the repository).
 | `nginx.conf` | Serves `client/dist`, proxies `/api` and `/socket.io` (with WebSocket upgrade). |
 | `backup-mongo.sh` | Daily MongoDB backup to disk, plus an optional copy to S3. |
 
+## Error tracking (Sentry)
+
+1. Create a free account at <https://sentry.io> and two projects: Node.js
+   (server) and React (client). Turn on email alerts for new issues.
+2. On the server, add the Node project's DSN to `server/.env`:
+   `SENTRY_DSN=https://...`. Add the React project's DSN to `client/.env`:
+   `VITE_SENTRY_DSN=https://...`.
+3. Rebuild the client (`cd client && npm run build`) and run
+   `pm2 restart codearena-server`.
+
+Leave both empty to keep error tracking off. Request bodies (code,
+passwords), headers and cookies are removed before anything is sent.
+
 ## Backups
 
 `backup-mongo.sh` runs `mongodump` inside the `codearena-mongo` container,

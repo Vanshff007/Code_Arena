@@ -5,6 +5,7 @@ import { getErrorMessage } from './getErrorMessage';
 import { verdictTone } from './ui/verdict';
 import { APP_VERSION } from './version';
 import { tierFor } from './tier';
+import { scrubEvent, initMonitoring } from './monitoring';
 import { THEME_KEY, readThemePreference, saveThemePreference, applyTheme, resolveDark } from './theme';
 
 describe('format', () => {
@@ -71,6 +72,22 @@ describe('tierFor', () => {
   it('treats a missing rating as Bronze', () => {
     expect(tierFor(undefined)).toBe('Bronze');
     expect(tierFor(-50)).toBe('Bronze');
+  });
+});
+
+describe('monitoring', () => {
+  it('stays off without a DSN', async () => {
+    expect(await initMonitoring('')).toBe(false);
+  });
+
+  it('removes request bodies, headers, cookies and fetch bodies before sending', () => {
+    const event = scrubEvent({
+      request: { url: '/practice/1', data: 'class Solution {}', cookies: 'ca_token=jwt', headers: { Cookie: 'jwt' } },
+      breadcrumbs: [{ category: 'fetch', data: { url: '/api/auth/login', body: '{"password":"hunter2"}' } }],
+    });
+    expect(event.request).toEqual({ url: '/practice/1' });
+    expect(event.breadcrumbs[0].data).toEqual({ url: '/api/auth/login' });
+    expect(JSON.stringify(event)).not.toMatch(/hunter2|jwt|Solution/);
   });
 });
 

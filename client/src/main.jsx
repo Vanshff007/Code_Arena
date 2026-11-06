@@ -6,6 +6,9 @@ import App from './App.jsx';
 import { ThemeProvider } from './shared/ThemeProvider.jsx';
 import { AuthProvider } from './features/auth/AuthContext.jsx';
 import { SocketProvider } from './features/battles/SocketContext.jsx';
+import { initMonitoring } from './shared/monitoring.js';
+
+initMonitoring().catch(() => {});
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
