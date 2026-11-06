@@ -14,6 +14,7 @@ import {
   summarizeMatches,
   OUTCOME_TEXT,
   progressFromResume,
+  summaryLine,
 } from './battleState';
 import { codeAt, replayLength, submissionsUntil, advance } from './replay';
 
@@ -46,6 +47,14 @@ describe('battle helpers', () => {
     expect(splitPlayers(players, 'me')).toEqual({ self: players[0], opponent: players[1] });
     expect(splitPlayers([players[0]], 'me').opponent).toBeNull();
     expect(splitPlayers(undefined, 'me')).toEqual({ self: null, opponent: null });
+  });
+
+  it('summarizes attempts and the best submission time', () => {
+    const fmt = (ms) => `${ms / 1000}s`;
+    expect(summaryLine({ attempts: 0, timeMs: null }, fmt)).toBe('Did not submit');
+    expect(summaryLine(undefined, fmt)).toBe('Did not submit');
+    expect(summaryLine({ attempts: 1, timeMs: 90_000 }, fmt)).toBe('1 attempt, best at 90s');
+    expect(summaryLine({ attempts: 3, timeMs: null }, fmt)).toBe('3 attempts');
   });
 
   it('normalizes room codes', () => {

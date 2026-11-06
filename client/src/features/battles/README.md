@@ -24,6 +24,8 @@ history, replays and spectating.
 - Your progress shows after your own submit; the opponent's after theirs.
 - On phones the clock sits above both players, and chat comes after the editor.
 - The battle route is keyed by room code, so a rematch starts with a fresh page.
+- The result screen shows each player's attempts and when their best
+  submission landed (`summaryLine`), side by side.
 
 ## Manual test cases
 

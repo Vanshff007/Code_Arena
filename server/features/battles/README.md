@@ -45,6 +45,8 @@ used there is missing here.
   problem of that difficulty is seen, any problem of that difficulty; if the
   bank has none of that difficulty, any problem.
 - The first `Accepted` wins. On timeout, more passed cases wins, then the earlier submission.
+- `battle:end` carries a summary per player: `attempts` (submissions) and
+  `timeMs` (time of the best submission, `null` if none). Never code.
 - A disconnected player has 20 s to come back, then forfeits. If both are
   gone, the clock decides.
 - In-progress battles are written to `ActiveRoom` on start, on each
@@ -67,7 +69,7 @@ used there is missing here.
 Automated: queue, room, countdown, battle start and the empty problem bank
 regression (`battles.test.js`); difficulty from ratings, unseen problems
 first, restore after a
-restart, replays, several tabs, rematch, spectators, socket rate limits
+restart, replays, post-battle summary, several tabs, rematch, spectators, socket rate limits
 (`battleFeatures.test.js`); ELO math (`rating.test.js`); room lookup,
 queueing again, snapshots (`state.test.js`).
 
@@ -85,3 +87,5 @@ Manual (two browsers, two accounts, plus a third to watch):
 6. Close one tab. The other side sees "Disconnected"; after 20 s it wins.
 7. On the result screen, offer a rematch; accept on the other side. Expect
    a new battle. Then open the replay from History.
+8. After a battle, both result cards show attempts and the best submission
+   time ("Did not submit" for a player who never submitted).

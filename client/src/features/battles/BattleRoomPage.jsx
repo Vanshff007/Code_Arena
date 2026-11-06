@@ -3,13 +3,13 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Copy, Check } from 'lucide-react';
 import { useSocket } from './useSocket';
 import { useAuth } from '../auth/useAuth';
-import { EVENTS, splitPlayers, outcomeFor, OUTCOME_TEXT, progressFromResume } from './battleState';
+import { EVENTS, splitPlayers, outcomeFor, OUTCOME_TEXT, progressFromResume, summaryLine } from './battleState';
 import VersusBar from './VersusBar';
 import BattleChat from './BattleChat';
 import ProblemStatement from '../problems/ProblemStatement';
 import EditorialPanel from '../problems/EditorialPanel';
 import CodeWorkspace from '../execution/CodeWorkspace';
-import { formatNumber, formatSigned } from '../../shared/format';
+import { formatClock, formatNumber, formatSigned } from '../../shared/format';
 import Button, { ButtonLink } from '../../shared/ui/Button';
 import Tag from '../../shared/ui/Tag';
 import { verdictTone } from '../../shared/ui/verdict';
@@ -437,6 +437,7 @@ function Result({ result, userId, problem, socket, roomCode }) {
                   <Tag>No submission</Tag>
                 )}
               </div>
+              <p className="mt-2 text-sm text-muted">{summaryLine(r, formatClock)}</p>
             </div>
           ) : null
         )}

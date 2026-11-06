@@ -534,6 +534,9 @@ async function endBattle(roomCode, { forcedWinnerId = null } = {}) {
       userId: p.userId,
       username: p.username,
       ...room.results[p.userId],
+      // Post-battle summary: verdicts and timing only, never code.
+      attempts: room.timeline.filter((e) => e.userId === p.userId).length,
+      timeMs: room.results[p.userId]?.submittedAt ? room.results[p.userId].submittedAt.getTime() - room.startedAt : null,
       ratingBefore: p.rating,
       ratingAfter: newRatings[p.userId],
     })),

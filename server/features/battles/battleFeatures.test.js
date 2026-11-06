@@ -194,6 +194,13 @@ describe('restart-safe battles and replays', () => {
       });
       const end = await ended;
       expect(end.winner).toBe(a.userId);
+      // Post-battle summary: attempts and time, never code.
+      const mineEnd = end.results.find((r) => r.userId === a.userId);
+      const theirsEnd = end.results.find((r) => r.userId === b.userId);
+      expect(mineEnd.attempts).toBe(1);
+      expect(mineEnd.timeMs).toBeGreaterThanOrEqual(0);
+      expect(theirsEnd).toMatchObject({ attempts: 0, timeMs: null });
+      expect(JSON.stringify(end)).not.toMatch(/print\(/);
       expect(await ActiveRoom.countDocuments()).toBe(0);
 
       const match = await Match.findById(end.matchId);
