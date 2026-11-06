@@ -5,6 +5,7 @@ import { getProblems } from '../problems/problemService';
 import { getMyMatches } from '../battles/matchService';
 import { getProfileByUsername } from '../profiles/profileService';
 import MatchRow from '../battles/MatchRow';
+import DailyCard from '../daily/DailyCard';
 import { pickRandom, winRate } from './dashboard';
 import { formatNumber } from '../../shared/format';
 import { tierFor } from '../../shared/tier';
@@ -109,23 +110,26 @@ function DashboardPage() {
           )}
         </section>
 
-        <section>
-          <SectionTitle>Keep improving</SectionTitle>
-          <ul className="divide-y divide-rule border-y border-rule">
-            {[
-              ['/skills', 'Skill profile', 'Strong and weak topics, with problems picked for you.'],
-              ['/leaderboard', 'Rankings', 'See who is above you and by how much.'],
-              [`/profile/${user.username}`, 'Your profile', 'Badges, public stats and LeetCode link.'],
-            ].map(([to, title, text]) => (
-              <li key={to}>
-                <Link to={to} className="group block py-4">
-                  <span className="font-semibold group-hover:text-p1">{title}</span>
-                  <span className="block text-sm text-muted">{text}</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
+        <div className="flex flex-col gap-10">
+          <DailyCard />
+          <section>
+            <SectionTitle>Keep improving</SectionTitle>
+            <ul className="divide-y divide-rule border-y border-rule">
+              {[
+                ['/skills', 'Skill profile', 'Strong and weak topics, with problems picked for you.'],
+                ['/leaderboard', 'Rankings', 'See who is above you and by how much.'],
+                [`/profile/${user.username}`, 'Your profile', 'Badges, public stats and LeetCode link.'],
+              ].map(([to, title, text]) => (
+                <li key={to}>
+                  <Link to={to} className="group block py-4">
+                    <span className="font-semibold group-hover:text-p1">{title}</span>
+                    <span className="block text-sm text-muted">{text}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        </div>
       </div>
     </main>
   );

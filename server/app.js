@@ -19,6 +19,7 @@ import matchRoutes from './features/battles/match.routes.js';
 import leetcodeRoutes from './features/leetcode/leetcode.routes.js';
 import skillRoutes from './features/skills/skill.routes.js';
 import friendRoutes from './features/friends/friends.routes.js';
+import dailyRoutes from './features/daily/daily.routes.js';
 
 const app = express();
 app.set('trust proxy', env.trustProxy);
@@ -58,6 +59,7 @@ app.use('/api/matches', matchRoutes);
 app.use('/api/leetcode', leetcodeRoutes);
 app.use('/api/skills', skillRoutes);
 app.use('/api/friends', friendRoutes);
+app.use('/api/daily', dailyRoutes);
 
 // --- Error handling (must be registered last) ---
 app.use(notFound);
