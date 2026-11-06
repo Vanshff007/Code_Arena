@@ -1,6 +1,6 @@
 {
   "name": "codearena-server",
-  "version": "1.5.3",
+  "version": "1.11.1",
   "description": "CodeArena backend - REST API, Socket.io server, Docker-based code execution engine",
   "main": "server.js",
   "type": "module",
@@ -16,6 +16,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@sentry/node": "^11.11.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",

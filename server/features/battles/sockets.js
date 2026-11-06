@@ -3,6 +3,7 @@ import { setIO } from '../../core/io.js';
 import { createSocketLimiter } from '../../core/socketLimits.js';
 import { markOnline, markOffline } from '../../core/presence.js';
 import logger from '../../core/utils/logger.js';
+import { captureError } from '../../core/monitoring.js';
 import { registerFriendSocketHandlers } from '../friends/friendSockets.js';
 import {
   createRoom,
@@ -35,7 +36,10 @@ function guarded(socket, allow) {
       }
       Promise.resolve()
         .then(() => handler(payload && typeof payload === 'object' ? payload : {}))
-        .catch((err) => logger.error(`[Socket] ${event} failed for ${socket.user.username}: ${err.message}`));
+        .catch((err) => {
+          logger.error(`[Socket] ${event} failed for ${socket.user.username}: ${err.message}`);
+          captureError(err, { event });
+        });
     });
   };
 }
@@ -62,7 +66,7 @@ export function registerSocketHandlers(io) {
     on('room:ready', ({ roomCode }) => setReady(socket, roomCode));
     on('battle:claim', ({ roomCode }) => claimBattle(socket, roomCode));
 
-    on('matchmaking:join', () => joinQueue(socket));
+    on('matchmaking:join', ({ mode }) => joinQueue(socket, mode));
     on('matchmaking:leave', () => leaveQueue(socket));
 
     on('chat:send', ({ roomCode, message }) => sendChatMessage(socket, roomCode, message));

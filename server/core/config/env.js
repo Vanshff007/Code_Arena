@@ -36,6 +36,8 @@ const env = {
   // shared 127.0.0.1 bucket. Elsewhere no proxy exists, so the header is
   // ignored and cannot be spoofed.
   trustProxy: process.env.NODE_ENV === 'production' ? 1 : false,
+  // Optional. Error tracking (core/monitoring.js) is off when empty.
+  sentryDsn: process.env.SENTRY_DSN || '',
 };
 
 export default env;

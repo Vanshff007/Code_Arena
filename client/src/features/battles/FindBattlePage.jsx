@@ -13,6 +13,7 @@ function FindBattlePage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [searching, setSearching] = useState(false);
+  const [mode, setMode] = useState('standard');
   const [searchStart, setSearchStart] = useState(0);
   const [elapsed, setElapsed] = useState(0);
   const [joinCode, setJoinCode] = useState('');
@@ -56,12 +57,13 @@ function FindBattlePage() {
     return () => socket.emit(EVENTS.queueLeave);
   }, [searching, socket]);
 
-  const startMatchmaking = () => {
+  const startMatchmaking = (nextMode) => {
     setError('');
+    setMode(nextMode);
     setSearchStart(Date.now());
     setElapsed(0);
     setSearching(true);
-    socket.emit(EVENTS.queueJoin);
+    socket.emit(EVENTS.queueJoin, { mode: nextMode });
   };
 
   const cancelMatchmaking = () => setSearching(false);
@@ -88,8 +90,8 @@ function FindBattlePage() {
   return (
     <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
       <PageHeader title="Battle">
-        One problem, fifteen minutes. The first accepted submission wins. If time runs out, more passed test cases
-        wins.
+        One problem, fifteen minutes, or five in blitz. The first accepted submission wins. If time runs out, more
+        passed test cases wins.
       </PageHeader>
 
       {error && (
@@ -103,7 +105,7 @@ function FindBattlePage() {
           {searching ? (
             <>
               <div>
-                <h2 className="text-lg font-bold">Looking for an opponent</h2>
+                <h2 className="text-lg font-bold">{mode === 'blitz' ? 'Looking for a blitz opponent' : 'Looking for an opponent'}</h2>
                 <p className="mt-1 text-sm text-muted">You'll be matched with the next player who joins the queue.</p>
               </div>
               <div className="flex items-end justify-between gap-4">
@@ -120,7 +122,8 @@ function FindBattlePage() {
               <div>
                 <h2 className="text-lg font-bold">Quick match</h2>
                 <p className="mt-1 max-w-md text-sm text-muted">
-                  Play the next available player. A win against a higher-rated opponent earns more points.
+                  Play the next available player. A win against a higher-rated opponent earns more points. Blitz is
+                  five minutes on an Easy problem, for the same rating.
                 </p>
               </div>
               <div className="flex flex-wrap items-end justify-between gap-4">
@@ -130,9 +133,14 @@ function FindBattlePage() {
                     {formatNumber(user.rating)}
                   </span>
                 </p>
-                <Button onClick={startMatchmaking} className="px-6 py-3 text-base">
-                  Find a match
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="secondary" onClick={() => startMatchmaking('blitz')} className="px-6 py-3 text-base">
+                    Blitz, 5 min
+                  </Button>
+                  <Button onClick={() => startMatchmaking('standard')} className="px-6 py-3 text-base">
+                    Find a match
+                  </Button>
+                </div>
               </div>
             </>
           )}

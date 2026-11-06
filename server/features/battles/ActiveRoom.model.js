@@ -9,6 +9,7 @@ import mongoose from 'mongoose';
 const activeRoomSchema = new mongoose.Schema(
   {
     roomCode: { type: String, required: true, unique: true },
+    mode: { type: String, enum: ['standard', 'blitz'], default: 'standard' },
     players: [
       {
         userId: { type: String, required: true },

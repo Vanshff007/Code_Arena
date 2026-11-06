@@ -3,6 +3,7 @@ import { Server } from 'socket.io';
 import env from './core/config/env.js';
 import connectDB from './core/config/db.js';
 import logger from './core/utils/logger.js';
+import { flushMonitoring } from './core/monitoring.js';
 import app from './app.js';
 import { registerSocketHandlers } from './features/battles/sockets.js';
 import { restoreActiveBattles } from './features/battles/roomManager.js';
@@ -37,12 +38,13 @@ start();
 // Log unhandled rejections instead of letting the process die silently.
 process.on('unhandledRejection', (err) => {
   logger.error(`Unhandled Rejection: ${err.message}`);
-  server.close(() => process.exit(1));
+  // Sentry's own handlers record the error; wait for it to be sent.
+  flushMonitoring().finally(() => server.close(() => process.exit(1)));
 });
 
 // A synchronous throw with no catch anywhere would otherwise crash the
 // process with no log line at all - mirror the same graceful-shutdown path.
 process.on('uncaughtException', (err) => {
   logger.error(`Uncaught Exception: ${err.stack || err.message}`);
-  server.close(() => process.exit(1));
+  flushMonitoring().finally(() => server.close(() => process.exit(1)));
 });

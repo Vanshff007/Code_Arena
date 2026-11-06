@@ -107,6 +107,14 @@ export function progressFromResume(progress = [], userId) {
   };
 }
 
+// One line for a player's result card: how many times they submitted and
+// when their best submission landed (battle:end `attempts`, `timeMs`).
+export function summaryLine({ attempts = 0, timeMs = null } = {}, formatTime) {
+  if (!attempts) return 'Did not submit';
+  const tries = attempts === 1 ? '1 attempt' : `${attempts} attempts`;
+  return timeMs == null ? tries : `${tries}, best at ${formatTime(timeMs)}`;
+}
+
 export const OUTCOME_TEXT = {
   win: 'You won',
   loss: 'You lost',

@@ -4,6 +4,7 @@ import Match from './Match.model.js';
 import ActiveRoom from './ActiveRoom.model.js';
 import BattleReplay from './BattleReplay.model.js';
 import User from '../auth/User.model.js';
+import PerformanceHistory from '../skills/PerformanceHistory.model.js';
 import { calculateRatings } from './rating.service.js';
 import { getIO } from '../../core/io.js';
 import {
@@ -13,6 +14,8 @@ import {
   findRoomByUserId,
   difficultyForRatings,
   addSnapshot,
+  MODES,
+  normalizeMode,
 } from './state.js';
 import logger from '../../core/utils/logger.js';
 
@@ -34,10 +37,16 @@ function generateRoomCode() {
 // Mongoose's normal find path - hiddenTestCases (select: false on the
 // schema) stays excluded. An aggregation $sample would bypass that
 // projection entirely and could leak hidden test cases into battle:start.
-// Prefers the difficulty that fits the players' ratings; falls back to any
-// problem when the bank has none of that difficulty.
-async function pickProblem(difficulty) {
-  for (const filter of [{ difficulty }, {}]) {
+// Prefers a problem of the difficulty that fits the players' ratings that
+// neither player has battled on or solved; then any of that difficulty;
+// then any problem at all.
+async function pickProblem(difficulty, userIds = []) {
+  const [battled, solved] = await Promise.all([
+    Match.distinct('problem', { 'players.user': { $in: userIds } }),
+    PerformanceHistory.distinct('problem', { user: { $in: userIds }, isAccepted: true }),
+  ]);
+  const seen = [...battled, ...solved];
+  for (const filter of [{ difficulty, _id: { $nin: seen } }, { difficulty }, {}]) {
     const count = await Problem.countDocuments(filter);
     if (count > 0) return Problem.findOne(filter).skip(randomInt(count));
   }
@@ -88,6 +97,7 @@ function spectatorState(room) {
     players: room.players.map(toPublicPlayer),
     progress: publicResults(room),
     problem: room.problem,
+    mode: room.mode,
     durationMs: room.durationMs,
     remainingMs: remainingMs(room),
   };
@@ -103,6 +113,7 @@ async function persistRoom(room) {
       { roomCode: room.roomCode },
       {
         roomCode: room.roomCode,
+        mode: room.mode,
         players: room.players.map((p) => ({ userId: p.userId, username: p.username, rating: p.rating })),
         problem: room.problem._id,
         matchId: room.matchId,
@@ -162,7 +173,7 @@ export async function restoreActiveBattles() {
       continue;
     }
     const [first, ...others] = doc.players.map((p) => ({ ...p.toObject(), socketId: null, ready: true }));
-    const room = createRoomState(doc.roomCode, first);
+    const room = createRoomState(doc.roomCode, first, normalizeMode(doc.mode));
     room.players.push(...others);
     Object.assign(room, {
       status: 'in_progress',
@@ -264,29 +275,32 @@ export function setReady(socket, roomCode) {
 
 // --- Random matchmaking ---
 
-export function joinQueue(socket) {
+export function joinQueue(socket, requestedMode) {
+  const mode = normalizeMode(requestedMode);
   const userId = socket.user._id.toString();
   if (findRoomByUserId(userId)) {
     return socket.emit('room:error', { message: 'You are already in a battle' });
   }
   if (matchmakingQueue.some((q) => q.userId === userId)) return;
 
-  matchmakingQueue.push({ socketId: socket.id, userId, username: socket.user.username, rating: socket.user.rating });
-  logger.info(`[Matchmaking] ${socket.user.username} queued. Queue size: ${matchmakingQueue.length}`);
-  socket.emit('matchmaking:waiting');
+  matchmakingQueue.push({ socketId: socket.id, userId, username: socket.user.username, rating: socket.user.rating, mode });
+  logger.info(`[Matchmaking] ${socket.user.username} queued for ${mode}. Queue size: ${matchmakingQueue.length}`);
+  socket.emit('matchmaking:waiting', { mode });
 
-  if (matchmakingQueue.length >= 2) {
-    const [a, b] = matchmakingQueue.splice(0, 2);
-    logger.info(`[Matchmaking] Opponent found: ${a.username} vs ${b.username}`);
-    startRoomWith(a, b, 'matchmaking:found');
+  const sameMode = matchmakingQueue.filter((q) => q.mode === mode);
+  if (sameMode.length >= 2) {
+    const [a, b] = sameMode;
+    for (const q of [a, b]) matchmakingQueue.splice(matchmakingQueue.indexOf(q), 1);
+    logger.info(`[Matchmaking] Opponent found (${mode}): ${a.username} vs ${b.username}`);
+    startRoomWith(a, b, 'matchmaking:found', mode);
   }
 }
 
 // Puts two players in a new room, ready, and starts the countdown. Used by
 // matchmaking and rematches.
-function startRoomWith(a, b, event) {
+function startRoomWith({ mode: _a, ...a }, { mode: _b, ...b }, event, mode = 'standard') {
   const roomCode = generateRoomCode();
-  const room = createRoomState(roomCode, { ...a, ready: true });
+  const room = createRoomState(roomCode, { ...a, ready: true }, mode);
   room.players.push({ ...b, ready: true });
   for (const p of room.players) socketById(p.socketId)?.join(roomCode);
   getIO().to(roomCode).emit(event, { roomCode });
@@ -325,13 +339,14 @@ async function startBattle(roomCode) {
   if (!room || room.status !== 'countdown') return;
 
   try {
-    const difficulty = difficultyForRatings(room.players.map((p) => p.rating));
-    const problem = await pickProblem(difficulty);
+    const difficulty = MODES[room.mode].difficulty ?? difficultyForRatings(room.players.map((p) => p.rating));
+    const problem = await pickProblem(difficulty, room.players.map((p) => p.userId));
     logger.info(`[Battle] "${problem.title}" (${problem.difficulty}, wanted ${difficulty}) for room ${roomCode}`);
 
     const match = await Match.create({
       problem: problem._id,
       players: room.players.map((p) => ({ user: p.userId, ratingBefore: p.rating })),
+      mode: room.mode,
       durationMs: room.durationMs,
       startedAt: new Date(),
     });
@@ -345,18 +360,21 @@ async function startBattle(roomCode) {
       room.snapshots[p.userId] = [];
     }
 
+    // Saved before anyone is told the battle started, so a restart from here
+    // on always finds it in ActiveRoom.
+    await persistRoom(room);
+
     const io = getIO();
     io.to(roomCode).emit('battle:start', {
       roomCode,
       matchId: match._id,
       problem, // toJSON on the Mongoose document strips hiddenTestCases
+      mode: room.mode,
       durationMs: room.durationMs,
       startedAt: room.startedAt,
       players: room.players.map(toPublicPlayer),
     });
     io.to(watchChannel(roomCode)).emit('spectate:state', spectatorState(room));
-
-    await persistRoom(room);
     startBattleClock(room);
   } catch (err) {
     logger.error(`[Battle] Failed to start battle for room ${roomCode}: ${err.message}`);
@@ -527,6 +545,9 @@ async function endBattle(roomCode, { forcedWinnerId = null } = {}) {
       userId: p.userId,
       username: p.username,
       ...room.results[p.userId],
+      // Post-battle summary: verdicts and timing only, never code.
+      attempts: room.timeline.filter((e) => e.userId === p.userId).length,
+      timeMs: room.results[p.userId]?.submittedAt ? room.results[p.userId].submittedAt.getTime() - room.startedAt : null,
       ratingBefore: p.rating,
       ratingAfter: newRatings[p.userId],
     })),
@@ -586,7 +607,7 @@ export async function acceptRematch(socket, { roomCode } = {}) {
   if (findRoomByUserId(a.userId) || findRoomByUserId(b.userId)) {
     return socket.emit('rematch:unavailable', { message: 'One of you is already in another battle.' });
   }
-  startRoomWith(a, b, 'rematch:start');
+  startRoomWith(a, b, 'rematch:start', room.mode);
 }
 
 export function declineRematch(socket, { roomCode } = {}) {
@@ -629,6 +650,7 @@ export function listLiveBattles() {
     .filter((r) => r.status === 'in_progress')
     .map((r) => ({
       roomCode: r.roomCode,
+      mode: r.mode,
       players: r.players.map((p) => ({ username: p.username, rating: p.rating })),
       problem: { title: r.problem.title, difficulty: r.problem.difficulty },
       remainingMs: remainingMs(r),
@@ -681,6 +703,7 @@ function resumePayload(room) {
   return {
     roomCode: room.roomCode,
     problem: room.problem,
+    mode: room.mode,
     durationMs: room.durationMs,
     remainingMs: remainingMs(room),
     players: room.players.map(toPublicPlayer),
