@@ -26,6 +26,7 @@ const matchSchema = new mongoose.Schema(
       enum: ['in_progress', 'completed', 'aborted'],
       default: 'in_progress',
     },
+    mode: { type: String, enum: ['standard', 'blitz'], default: 'standard' },
     winner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null }, // null = draw or aborted
     isDraw: { type: Boolean, default: false },
     durationMs: { type: Number, required: true },

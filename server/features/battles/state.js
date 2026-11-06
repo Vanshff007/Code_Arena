@@ -4,7 +4,8 @@
 // assumes a single Node process; several instances would need shared state
 // (e.g. Redis) and cross-instance socket delivery.
 
-// Random-matchmaking queue: [{ socketId, userId, username, rating }]
+// Random-matchmaking queue: [{ socketId, userId, username, rating, mode }].
+// Players are only paired with someone queued for the same mode.
 export const matchmakingQueue = [];
 
 // roomCode -> RoomState
@@ -12,15 +13,24 @@ export const rooms = new Map();
 
 export const BATTLE_DURATION_MS = 15 * 60 * 1000;
 
-export function createRoomState(roomCode, hostPlayer) {
+// Battle modes. Blitz: 5 minutes, Easy problems only, same rating.
+export const MODES = {
+  standard: { durationMs: BATTLE_DURATION_MS, difficulty: null },
+  blitz: { durationMs: 5 * 60 * 1000, difficulty: 'Easy' },
+};
+
+export const normalizeMode = (mode) => (Object.hasOwn(MODES, mode) ? mode : 'standard');
+
+export function createRoomState(roomCode, hostPlayer, mode = 'standard') {
   const room = {
     roomCode,
     players: [hostPlayer], // { userId, socketId, username, rating, ready }
     status: 'waiting', // waiting -> countdown -> in_progress -> completed
+    mode,
     problem: null,
     matchId: null,
     startedAt: null,
-    durationMs: BATTLE_DURATION_MS,
+    durationMs: MODES[mode].durationMs,
     timerInterval: null,
     countdownInterval: null,
     disconnectTimers: {}, // userId -> setTimeout handle (forfeit grace period)

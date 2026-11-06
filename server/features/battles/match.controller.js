@@ -27,6 +27,7 @@ export const getMyMatches = async (req, res, next) => {
         matchId: m._id,
         problem: m.problem?.title,
         difficulty: m.problem?.difficulty,
+        mode: m.mode,
         opponent: opponent?.user?.username ?? 'Unknown',
         language: self?.language,
         result,

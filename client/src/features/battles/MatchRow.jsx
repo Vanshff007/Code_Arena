@@ -23,6 +23,7 @@ function MatchRow({ match, detailed = false }) {
           <span className="block truncate font-semibold text-ink">vs {match.opponent}</span>
           <span className="block truncate text-sm text-muted">
             {match.problem}
+            {match.mode === 'blitz' && ', blitz'}
             {detailed && match.language && `, ${languageLabel(match.language)}`}
           </span>
         </span>

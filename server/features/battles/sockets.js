@@ -62,7 +62,7 @@ export function registerSocketHandlers(io) {
     on('room:ready', ({ roomCode }) => setReady(socket, roomCode));
     on('battle:claim', ({ roomCode }) => claimBattle(socket, roomCode));
 
-    on('matchmaking:join', () => joinQueue(socket));
+    on('matchmaking:join', ({ mode }) => joinQueue(socket, mode));
     on('matchmaking:leave', () => leaveQueue(socket));
 
     on('chat:send', ({ roomCode, message }) => sendChatMessage(socket, roomCode, message));

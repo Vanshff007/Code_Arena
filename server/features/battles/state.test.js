@@ -7,6 +7,8 @@ import {
   addSnapshot,
   MAX_SNAPSHOTS_PER_PLAYER,
   MAX_SNAPSHOT_CHARS,
+  normalizeMode,
+  BATTLE_DURATION_MS,
 } from './state.js';
 import { createSocketLimiter } from '../../core/socketLimits.js';
 
@@ -30,6 +32,19 @@ describe('room state', () => {
 
     const next = createRoomState('NEW001', player('u1'));
     expect(findRoomByUserId('u1')).toBe(next);
+  });
+});
+
+describe('battle modes', () => {
+  it('sets the clock from the mode, and falls back to standard', () => {
+    expect(createRoomState('STD001', player('u1')).durationMs).toBe(BATTLE_DURATION_MS);
+    const blitz = createRoomState('BLZ001', player('u2'), 'blitz');
+    expect(blitz.mode).toBe('blitz');
+    expect(blitz.durationMs).toBe(5 * 60 * 1000);
+    expect(normalizeMode('blitz')).toBe('blitz');
+    expect(normalizeMode('turbo')).toBe('standard');
+    expect(normalizeMode(undefined)).toBe('standard');
+    expect(normalizeMode('toString')).toBe('standard');
   });
 });
 

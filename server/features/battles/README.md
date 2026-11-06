@@ -38,6 +38,11 @@ used there is missing here.
 ## Behavior
 
 - Lifecycle: `waiting → countdown (5 s) → in_progress (15 min) → completed`.
+- Modes (`MODES` in `state.js`): `standard` (15 min, difficulty from
+  ratings) and `blitz` (5 min, Easy only). `matchmaking:join { mode }`
+  pairs players only within one mode. Blitz is rated like standard. Private
+  rooms and friend challenges are standard; a rematch keeps the mode. The
+  mode is saved on `Match` and `ActiveRoom`, so a restart keeps it.
 - Difficulty follows the average rating: below 1150 Easy, below 1450
   Medium, else Hard.
 - Fewer repeats: the problem is one neither player has battled on or
@@ -67,8 +72,8 @@ used there is missing here.
 ## Tests
 
 Automated: queue, room, countdown, battle start and the empty problem bank
-regression (`battles.test.js`); difficulty from ratings, unseen problems
-first, restore after a
+regression (`battles.test.js`); difficulty from ratings, blitz queue and
+clock, unseen problems first, restore after a
 restart, replays, post-battle summary, several tabs, rematch, spectators, socket rate limits
 (`battleFeatures.test.js`); ELO math (`rating.test.js`); room lookup,
 queueing again, snapshots (`state.test.js`).
@@ -89,3 +94,6 @@ Manual (two browsers, two accounts, plus a third to watch):
    a new battle. Then open the replay from History.
 8. After a battle, both result cards show attempts and the best submission
    time ("Did not submit" for a player who never submitted).
+9. Both click Blitz, 5 min. Expect a 5:00 clock and an Easy problem. A
+   third player on Find a match is not paired with either. History shows
+   "blitz" next to the problem.

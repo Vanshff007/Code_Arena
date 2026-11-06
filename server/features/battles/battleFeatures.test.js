@@ -128,6 +128,54 @@ describe('problem difficulty from ratings', () => {
   );
 });
 
+describe('blitz mode', () => {
+  it(
+    'pairs only blitz players, uses an Easy problem and a 5 minute clock, and saves the mode',
+    async () => {
+      await Problem.create(problemDoc('Blitz Hard', 'Hard'));
+      await Problem.create(problemDoc('Blitz Easy', 'Easy'));
+      const a = await register('blitzA', 1700);
+      const b = await register('blitzB', 1700);
+      const c = await register('standardC', 1700);
+      const sa = await connect(a.token);
+      const sb = await connect(b.token);
+      const sc = await connect(c.token);
+
+      // A standard player in the queue must not be paired with a blitz player.
+      const waiting = once(sc, 'matchmaking:waiting');
+      sc.emit('matchmaking:join');
+      expect((await waiting).mode).toBe('standard');
+
+      const started = Promise.all([once(sa, 'battle:start'), once(sb, 'battle:start')]);
+      sa.emit('matchmaking:join', { mode: 'blitz' });
+      sb.emit('matchmaking:join', { mode: 'blitz' });
+      const [start] = await started;
+      expect(start.mode).toBe('blitz');
+      expect(start.durationMs).toBe(5 * 60 * 1000);
+      expect(start.problem.difficulty).toBe('Easy');
+      expect(matchmakingQueue.map((q) => q.userId)).toEqual([c.userId]);
+      expect((await ActiveRoom.findOne({ roomCode: start.roomCode })).mode).toBe('blitz');
+
+      const ended = once(sa, 'battle:end');
+      await handleBattleSubmission(start.roomCode, a.userId, { verdict: 'Accepted', passedCount: 1, totalCount: 1 });
+      const end = await ended;
+      expect((await Match.findById(end.matchId)).mode).toBe('blitz');
+      const history = await request(app).get('/api/matches/me').set('Authorization', `Bearer ${a.token}`);
+      expect(history.body.data.matches[0].mode).toBe('blitz');
+    },
+    25000
+  );
+
+  it('treats an unknown mode as standard', async () => {
+    await Problem.create(problemDoc('Unknown Mode', 'Easy'));
+    const a = await register('modeA');
+    const sa = await connect(a.token);
+    const waiting = once(sa, 'matchmaking:waiting');
+    sa.emit('matchmaking:join', { mode: 'turbo' });
+    expect((await waiting).mode).toBe('standard');
+  });
+});
+
 describe('fewer repeat problems', () => {
   it(
     'skips problems either player has battled on or solved, and repeats only when nothing else is left',
