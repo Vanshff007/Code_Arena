@@ -19,6 +19,7 @@ import Problem from '../problems/Problem.model.js';
 import Match from './Match.model.js';
 import ActiveRoom from './ActiveRoom.model.js';
 import BattleReplay from './BattleReplay.model.js';
+import PerformanceHistory from '../skills/PerformanceHistory.model.js';
 
 let server;
 let port;
@@ -45,6 +46,7 @@ beforeEach(async () => {
     Match.deleteMany({}),
     ActiveRoom.deleteMany({}),
     BattleReplay.deleteMany({}),
+    PerformanceHistory.deleteMany({}),
   ]);
 });
 
@@ -123,6 +125,54 @@ describe('problem difficulty from ratings', () => {
       expect(start.problem.difficulty).toBe('Hard');
     },
     20000
+  );
+});
+
+describe('fewer repeat problems', () => {
+  it(
+    'skips problems either player has battled on or solved, and repeats only when nothing else is left',
+    async () => {
+      const battled = await Problem.create(problemDoc('Battled Before', 'Easy'));
+      const solved = await Problem.create(problemDoc('Solved Before', 'Easy'));
+      await Problem.create(problemDoc('Fresh One', 'Easy'));
+      const a = await register('repeatA');
+      const b = await register('repeatB');
+      await Match.create({
+        problem: battled._id,
+        players: [
+          { user: a.userId, ratingBefore: 1000 },
+          { user: new mongoose.Types.ObjectId(), ratingBefore: 1000 },
+        ],
+        status: 'completed',
+        durationMs: 1000,
+        startedAt: new Date(),
+      });
+      await PerformanceHistory.create({
+        user: b.userId,
+        problem: solved._id,
+        language: 'python',
+        verdict: 'Accepted',
+        isAccepted: true,
+      });
+
+      const play = async () => {
+        const sa = await connect(a.token);
+        const sb = await connect(b.token);
+        const started = once(sa, 'battle:start');
+        sa.emit('matchmaking:join');
+        sb.emit('matchmaking:join');
+        const start = await started;
+        const ended = once(sa, 'battle:end');
+        await handleBattleSubmission(start.roomCode, a.userId, { verdict: 'Accepted', passedCount: 1, totalCount: 1 });
+        await ended;
+        return start.problem.title;
+      };
+
+      expect(await play()).toBe('Fresh One');
+      // Every Easy problem is now seen: fall back to one of them.
+      expect(['Battled Before', 'Solved Before', 'Fresh One']).toContain(await play());
+    },
+    30000
   );
 });
 

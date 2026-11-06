@@ -39,7 +39,11 @@ used there is missing here.
 
 - Lifecycle: `waiting → countdown (5 s) → in_progress (15 min) → completed`.
 - Difficulty follows the average rating: below 1150 Easy, below 1450
-  Medium, else Hard. If the bank has none of that difficulty, any problem.
+  Medium, else Hard.
+- Fewer repeats: the problem is one neither player has battled on or
+  solved (from `Match` and accepted `PerformanceHistory` rows). When every
+  problem of that difficulty is seen, any problem of that difficulty; if the
+  bank has none of that difficulty, any problem.
 - The first `Accepted` wins. On timeout, more passed cases wins, then the earlier submission.
 - A disconnected player has 20 s to come back, then forfeits. If both are
   gone, the clock decides.
@@ -61,7 +65,8 @@ used there is missing here.
 ## Tests
 
 Automated: queue, room, countdown, battle start and the empty problem bank
-regression (`battles.test.js`); difficulty from ratings, restore after a
+regression (`battles.test.js`); difficulty from ratings, unseen problems
+first, restore after a
 restart, replays, several tabs, rematch, spectators, socket rate limits
 (`battleFeatures.test.js`); ELO math (`rating.test.js`); room lookup,
 queueing again, snapshots (`state.test.js`).

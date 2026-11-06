@@ -4,6 +4,7 @@ import Match from './Match.model.js';
 import ActiveRoom from './ActiveRoom.model.js';
 import BattleReplay from './BattleReplay.model.js';
 import User from '../auth/User.model.js';
+import PerformanceHistory from '../skills/PerformanceHistory.model.js';
 import { calculateRatings } from './rating.service.js';
 import { getIO } from '../../core/io.js';
 import {
@@ -34,10 +35,16 @@ function generateRoomCode() {
 // Mongoose's normal find path - hiddenTestCases (select: false on the
 // schema) stays excluded. An aggregation $sample would bypass that
 // projection entirely and could leak hidden test cases into battle:start.
-// Prefers the difficulty that fits the players' ratings; falls back to any
-// problem when the bank has none of that difficulty.
-async function pickProblem(difficulty) {
-  for (const filter of [{ difficulty }, {}]) {
+// Prefers a problem of the difficulty that fits the players' ratings that
+// neither player has battled on or solved; then any of that difficulty;
+// then any problem at all.
+async function pickProblem(difficulty, userIds = []) {
+  const [battled, solved] = await Promise.all([
+    Match.distinct('problem', { 'players.user': { $in: userIds } }),
+    PerformanceHistory.distinct('problem', { user: { $in: userIds }, isAccepted: true }),
+  ]);
+  const seen = [...battled, ...solved];
+  for (const filter of [{ difficulty, _id: { $nin: seen } }, { difficulty }, {}]) {
     const count = await Problem.countDocuments(filter);
     if (count > 0) return Problem.findOne(filter).skip(randomInt(count));
   }
@@ -326,7 +333,7 @@ async function startBattle(roomCode) {
 
   try {
     const difficulty = difficultyForRatings(room.players.map((p) => p.rating));
-    const problem = await pickProblem(difficulty);
+    const problem = await pickProblem(difficulty, room.players.map((p) => p.userId));
     logger.info(`[Battle] "${problem.title}" (${problem.difficulty}, wanted ${difficulty}) for room ${roomCode}`);
 
     const match = await Match.create({
