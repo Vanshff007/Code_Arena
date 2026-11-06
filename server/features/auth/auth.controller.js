@@ -79,7 +79,7 @@ export const logout = (req, res) => {
 
 // Disconnects every live socket of a user, so revoked sessions also drop
 // out of battles and presence right away instead of at their next request.
-async function disconnectSockets(userId) {
+export async function disconnectSockets(userId) {
   const io = getIO();
   if (!io) return;
   const sockets = await io.fetchSockets();

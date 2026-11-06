@@ -37,6 +37,10 @@ const userSchema = new mongoose.Schema(
     // change). Each JWT carries the version it was issued with - see
     // session.js.
     tokenVersion: { type: Number, default: 0, select: false },
+    // Password reset: only the SHA-256 of the emailed token is stored, so a
+    // database leak cannot be used to reset passwords. Single use, short-lived.
+    passwordResetHash: { type: String, default: null, select: false },
+    passwordResetExpires: { type: Date, default: null, select: false },
     rating: {
       type: Number,
       default: 1000, // starting ELO; matchmaking (later step) adjusts this after each battle
@@ -118,6 +122,8 @@ userSchema.set('toJSON', {
   transform: (doc, ret) => {
     delete ret.password;
     delete ret.tokenVersion;
+    delete ret.passwordResetHash;
+    delete ret.passwordResetExpires;
     delete ret.__v;
     return ret;
   },

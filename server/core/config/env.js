@@ -38,6 +38,15 @@ const env = {
   trustProxy: process.env.NODE_ENV === 'production' ? 1 : false,
   // Optional. Error tracking (core/monitoring.js) is off when empty.
   sentryDsn: process.env.SENTRY_DSN || '',
+  // Optional. Password reset emails (core/utils/mailer.js) are off when
+  // user or pass is empty. Defaults fit Gmail with an app password.
+  smtp: {
+    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    port: Number(process.env.SMTP_PORT) || 465,
+    user: process.env.SMTP_USER || '',
+    pass: process.env.SMTP_PASS || '',
+    from: process.env.MAIL_FROM || '',
+  },
 };
 
 export default env;

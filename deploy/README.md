@@ -22,6 +22,24 @@ private, not in the repository).
 Leave both empty to keep error tracking off. Request bodies (code,
 passwords), headers and cookies are removed before anything is sent.
 
+## Password reset email (Gmail)
+
+1. On the Gmail account that sends the emails, turn on 2-step
+   verification, then create an app password (Google account → Security →
+   App passwords).
+2. In `server/.env` on the server:
+   ```
+   SMTP_USER=you@gmail.com
+   SMTP_PASS=<16-character app password>
+   MAIL_FROM=CodeArena <you@gmail.com>
+   ```
+3. `pm2 restart codearena-server`, then try "Forgot password?" on the live
+   site with your own account.
+
+Without these settings the forgot password page still answers, but no
+email is sent (the server log shows a warning). Gmail allows about 500
+emails a day.
+
 ## Backups
 
 `backup-mongo.sh` runs `mongodump` inside the `codearena-mongo` container,

@@ -156,5 +156,6 @@ describe('api client', () => {
     await expect(reject({ response: { status: 401 } })).rejects.toBeTruthy();
     expect(calls).toBe(1);
     expect(api.defaults.withCredentials).toBe(true);
-  });
+    // The first import of axios on a cold run can pass the 5 s default.
+  }, 20_000);
 });

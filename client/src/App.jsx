@@ -5,6 +5,8 @@ import ProtectedRoute from './features/auth/ProtectedRoute';
 import AdminRoute from './features/auth/AdminRoute';
 import LoginPage from './features/auth/LoginPage';
 import RegisterPage from './features/auth/RegisterPage';
+import ForgotPasswordPage from './features/auth/ForgotPasswordPage';
+import ResetPasswordPage from './features/auth/ResetPasswordPage';
 import SettingsPage from './features/auth/SettingsPage';
 import HomePage from './features/home/HomePage';
 import NotFoundPage from './features/home/NotFoundPage';
@@ -66,6 +68,8 @@ function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
           {protectedRoutes.map(([path, Page]) => (
             <Route
               key={path}

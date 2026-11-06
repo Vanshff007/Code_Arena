@@ -13,3 +13,7 @@ export const logoutUser = () => api.post('/auth/logout').then((res) => res.data)
 export const logoutEverywhere = () => api.post('/auth/logout-all').then((res) => res.data);
 
 export const changePassword = (payload) => api.put('/auth/password', payload).then((res) => res.data);
+
+export const requestPasswordReset = (email) => api.post('/auth/forgot-password', { email }).then((res) => res.data);
+
+export const resetPassword = (payload) => api.post('/auth/reset-password', payload).then((res) => res.data);

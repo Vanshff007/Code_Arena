@@ -18,6 +18,17 @@ export const loginValidation = [
   body('password').notEmpty().withMessage('Password is required'),
 ];
 
+// Validation chain for POST /api/auth/forgot-password
+export const forgotPasswordValidation = [
+  body('email').trim().isEmail().withMessage('A valid email is required').normalizeEmail(),
+];
+
+// Validation chain for POST /api/auth/reset-password
+export const resetPasswordValidation = [
+  body('token').isString().isHexadecimal().isLength({ min: 64, max: 64 }).withMessage('This reset link is not valid'),
+  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
+];
+
 // Validation chain for PUT /api/auth/password
 export const changePasswordValidation = [
   body('currentPassword').notEmpty().withMessage('Current password is required'),
