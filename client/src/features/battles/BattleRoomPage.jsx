@@ -7,6 +7,8 @@ import { EVENTS, splitPlayers, outcomeFor, OUTCOME_TEXT, progressFromResume, sum
 import { useBattleLockdown, enterFullscreen } from './lockdown';
 import VersusBar from './VersusBar';
 import BattleChat from './BattleChat';
+import BattleCallouts from '../gamification/BattleCallouts';
+import PromotionPanel from '../gamification/PromotionPanel';
 import ProblemStatement from '../problems/ProblemStatement';
 import EditorialPanel from '../problems/EditorialPanel';
 import CodeWorkspace from '../execution/CodeWorkspace';
@@ -229,6 +231,12 @@ function BattleRoomPage() {
   return (
     <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
       {needsFullscreen && <FullscreenGate />}
+      <BattleCallouts
+        selfProgress={selfProgress}
+        opponentProgress={opponentProgress}
+        remainingMs={remainingMs}
+        opponentName={opponent?.username}
+      />
       <VersusBar
         self={self}
         opponent={opponent}
@@ -431,6 +439,8 @@ function Result({ result, userId, problem, socket, roomCode }) {
       <h1 className={`font-wide text-6xl font-black leading-none tracking-tight sm:text-8xl ${headlineColor}`}>
         {OUTCOME_TEXT[outcome]}
       </h1>
+
+      {you && <PromotionPanel ratingBefore={you.ratingBefore} ratingAfter={you.ratingAfter} />}
 
       <div className="mt-10 grid gap-px border border-rule bg-rule sm:grid-cols-2">
         {[

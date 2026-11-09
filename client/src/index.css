@@ -23,6 +23,13 @@
   --color-ok: #0f7f57; /* accepted */
   --color-warn: #a96400; /* partial / pending */
 
+  /* Ranked tiers (shared/tier.js). Only for tier names, frames and ladders. */
+  --color-tier-bronze: #9a5b2c;
+  --color-tier-silver: #6b7385;
+  --color-tier-gold: #9a7400;
+  --color-tier-platinum: #17807b;
+  --color-tier-diamond: #6b3fd4;
+
   --font-sans: 'Archivo', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, 'Courier New', monospace;
 
@@ -47,6 +54,11 @@
   --color-p2: #ff4f6d;
   --color-ok: #36c98a;
   --color-warn: #eba43a;
+  --color-tier-bronze: #c98450;
+  --color-tier-silver: #aab3c2;
+  --color-tier-gold: #e6b93a;
+  --color-tier-platinum: #3cc7c0;
+  --color-tier-diamond: #b49cff;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -63,6 +75,11 @@
     --color-p2: #ff4f6d;
     --color-ok: #36c98a;
     --color-warn: #eba43a;
+    --color-tier-bronze: #c98450;
+    --color-tier-silver: #aab3c2;
+    --color-tier-gold: #e6b93a;
+    --color-tier-platinum: #3cc7c0;
+    --color-tier-diamond: #b49cff;
   }
 }
 
@@ -107,6 +124,18 @@
 
 @utility num {
   font-variant-numeric: tabular-nums;
+}
+
+/* Battle callouts slide in from the side; motion answers an event. */
+@utility callout-in {
+  animation: callout-in 0.2s ease-out;
+}
+
+@keyframes callout-in {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
