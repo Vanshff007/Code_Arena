@@ -5,6 +5,7 @@ vi.mock('../../shared/api', () => ({ default: { get: vi.fn(async () => ({ data: 
 
 import api from '../../shared/api';
 import { getMyMatches, getLiveBattles, getReplay } from './matchService';
+import { attachLockdown, BLOCKED_EVENTS, fullscreenSupported } from './lockdown';
 import {
   EVENTS,
   splitPlayers,
@@ -148,5 +149,33 @@ describe('live and replay services', () => {
 describe('replay length rounding', () => {
   it('rounds up to the slider step so the end includes the last event', () => {
     expect(replayLength([], [{ t: 12_123 }], 900_000)).toBe(12_500);
+  });
+});
+
+describe('battle lockdown', () => {
+  const fire = (target, type) => {
+    const e = new Event(type, { cancelable: true });
+    target.dispatchEvent(e);
+    return e.defaultPrevented;
+  };
+
+  it('blocks copy, cut, paste, right-click and drop while attached', () => {
+    const target = new EventTarget();
+    const detach = attachLockdown(target);
+    for (const type of ['copy', 'cut', 'paste', 'contextmenu', 'drop']) expect(fire(target, type)).toBe(true);
+    expect(BLOCKED_EVENTS).toHaveLength(5);
+    detach();
+  });
+
+  it('leaves other events and a detached page alone', () => {
+    const target = new EventTarget();
+    const detach = attachLockdown(target);
+    expect(fire(target, 'keydown')).toBe(false);
+    detach();
+    expect(fire(target, 'paste')).toBe(false);
+  });
+
+  it('reports no fullscreen support without a document', () => {
+    expect(fullscreenSupported()).toBe(false);
   });
 });

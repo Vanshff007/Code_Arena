@@ -10,6 +10,7 @@ import ResetPasswordPage from './features/auth/ResetPasswordPage';
 import SettingsPage from './features/auth/SettingsPage';
 import HomePage from './features/home/HomePage';
 import NotFoundPage from './features/home/NotFoundPage';
+import GuidePage from './features/guide/GuidePage';
 import DashboardPage from './features/dashboard/DashboardPage';
 import ProblemsPage from './features/problems/ProblemsPage';
 import ProblemSolvePage from './features/problems/ProblemSolvePage';
@@ -70,6 +71,7 @@ function App() {
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/guide" element={<GuidePage />} />
           {protectedRoutes.map(([path, Page]) => (
             <Route
               key={path}

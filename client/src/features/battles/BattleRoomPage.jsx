@@ -4,6 +4,7 @@ import { Copy, Check } from 'lucide-react';
 import { useSocket } from './useSocket';
 import { useAuth } from '../auth/useAuth';
 import { EVENTS, splitPlayers, outcomeFor, OUTCOME_TEXT, progressFromResume, summaryLine } from './battleState';
+import { useBattleLockdown, enterFullscreen } from './lockdown';
 import VersusBar from './VersusBar';
 import BattleChat from './BattleChat';
 import ProblemStatement from '../problems/ProblemStatement';
@@ -52,6 +53,7 @@ function BattleRoomPage() {
   const latestCode = useRef(null); // { code, language } not yet sent as a snapshot
 
   const { self, opponent } = splitPlayers(players, user._id);
+  const { needsFullscreen } = useBattleLockdown(phase === 'in_progress');
 
   useEffect(() => {
     if (!socket) return;
@@ -154,7 +156,11 @@ function BattleRoomPage() {
     return () => clearInterval(id);
   }, [socket, phase, roomCode]);
 
-  const handleReady = () => socket.emit(EVENTS.roomReady, { roomCode });
+  // The ready click is the user gesture browsers need to allow fullscreen.
+  const handleReady = () => {
+    enterFullscreen();
+    socket.emit(EVENTS.roomReady, { roomCode });
+  };
 
   const handleCopyCode = () => {
     navigator.clipboard.writeText(roomCode);
@@ -222,6 +228,7 @@ function BattleRoomPage() {
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
+      {needsFullscreen && <FullscreenGate />}
       <VersusBar
         self={self}
         opponent={opponent}
@@ -258,6 +265,23 @@ function BattleRoomPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+// Covers the battle until the player is in fullscreen: at the start of a
+// quick match (no ready click to open it) and after leaving it. The clock
+// keeps running, so leaving only costs the player who left.
+function FullscreenGate() {
+  return (
+    <div role="dialog" aria-modal="true" aria-labelledby="fullscreen-gate-title" className="fixed inset-0 z-[60] flex items-center justify-center bg-paper px-4">
+      <div className="max-w-md">
+        <h2 id="fullscreen-gate-title" className="font-wide text-3xl font-extrabold">Battles are played in fullscreen</h2>
+        <p className="mt-2 text-muted">The problem and your code stay hidden until you enter fullscreen. The clock is running.</p>
+        <Button className="mt-6" onClick={enterFullscreen}>
+          Enter fullscreen
+        </Button>
+      </div>
+    </div>
   );
 }
 

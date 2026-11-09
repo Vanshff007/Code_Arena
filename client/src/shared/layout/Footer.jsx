@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { getHealth } from '../../features/health/healthService';
 import { APP_VERSION } from '../version';
 
@@ -16,7 +17,12 @@ function Footer() {
   return (
     <footer className="mt-20 border-t border-rule">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-4 py-6 text-xs text-muted sm:px-6">
-        <span>CodeArena. Two players, one problem.</span>
+        <span>
+          CodeArena. Two players, one problem.{' '}
+          <Link to="/guide" className="ml-2 hover:text-ink hover:underline">
+            Beginner's guide
+          </Link>
+        </span>
         <span className="num">
           Version {APP_VERSION}
           {serverVersion && serverVersion !== APP_VERSION && (
