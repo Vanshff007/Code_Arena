@@ -4,7 +4,7 @@ import { formatSigned, formatNumber, formatClock, formatDate } from './format';
 import { getErrorMessage } from './getErrorMessage';
 import { verdictTone } from './ui/verdict';
 import { APP_VERSION } from './version';
-import { tierFor } from './tier';
+import { tierFor, nextTier, tierChange } from './tier';
 import { scrubEvent, initMonitoring } from './monitoring';
 import { THEME_KEY, readThemePreference, saveThemePreference, applyTheme, resolveDark } from './theme';
 
@@ -72,6 +72,19 @@ describe('tierFor', () => {
   it('treats a missing rating as Bronze', () => {
     expect(tierFor(undefined)).toBe('Bronze');
     expect(tierFor(-50)).toBe('Bronze');
+  });
+
+  it('gives the next tier and the rating still needed', () => {
+    expect(nextTier(1000)).toEqual({ name: 'Silver', pointsToGo: 100 });
+    expect(nextTier(1112)).toEqual({ name: 'Gold', pointsToGo: 188 });
+    expect(nextTier(1700)).toBeNull();
+  });
+
+  it('spots a tier line crossed in either direction', () => {
+    expect(tierChange(1090, 1108)).toBe('up');
+    expect(tierChange(1310, 1295)).toBe('down');
+    expect(tierChange(1100, 1290)).toBeNull();
+    expect(tierChange(1000, 1000)).toBeNull();
   });
 });
 

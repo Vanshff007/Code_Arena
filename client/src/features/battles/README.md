@@ -12,6 +12,7 @@ history, replays and spectating.
 | `FindBattlePage.jsx` | Quick match or blitz (with a search timer), create room, join by code. Leaves the queue on cancel or navigation. |
 | `BattleRoomPage.jsx` | Lobby, split-color countdown, battle, result with rematch, replay link and editorial. Claims the battle on open; shows "open in another tab" when another tab takes it. Sends a code snapshot every 5 s while the code changes. |
 | `lockdown.js` | `useBattleLockdown(active)`: blocks copy, cut, paste, right-click and drop while a battle runs, and reports when the player is outside fullscreen. `enterFullscreen()` for button handlers. |
+| (from `features/gamification`) | `BattleCallouts` during the battle and `PromotionPanel` on the result. |
 | `VersusBar.jsx` | You (cobalt) vs opponent (crimson), passed-case pips, shared clock. |
 | `BattleChat.jsx` | Room chat, with a notice when messages are rate-limited. Read-only for spectators. |
 | `MatchRow.jsx`, `MatchHistoryPage.jsx`, `matchService.js` | History, marked "blitz" for blitz battles, with a Replay link when one exists. |
