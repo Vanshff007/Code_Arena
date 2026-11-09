@@ -6,7 +6,7 @@ Landing page and the 404 page.
 
 | File | Job |
 |---|---|
-| `HomePage.jsx` | Hero, "How a battle runs", short feature notes. |
+| `HomePage.jsx` | Hero, "How a battle runs" (with a link to the beginner's guide, `features/guide`), short feature notes. |
 | `DuelDemo.jsx` | Scripted mock duel. The only ambient animation in the app; shows the final frame when reduced motion is on. |
 | `duelScript.js` | Demo content and `demoFrame(t)`, a pure function of elapsed time. |
 | `NotFoundPage.jsx` | 404. |

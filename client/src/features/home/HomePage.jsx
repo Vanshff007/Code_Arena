@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { useAuth } from '../auth/useAuth';
 import { ButtonLink } from '../../shared/ui/Button';
 import DuelDemo from './DuelDemo';
@@ -62,6 +63,9 @@ function HomePage() {
             </li>
           ))}
         </ol>
+        <Link to="/guide" className="mt-4 inline-block text-sm font-semibold text-p1 hover:underline">
+          New here? Read the beginner's guide
+        </Link>
       </section>
 
       <section className="mx-auto mt-24 grid max-w-6xl gap-10 px-4 sm:px-6 lg:grid-cols-3">
