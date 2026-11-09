@@ -128,6 +128,47 @@ describe('problem difficulty from ratings', () => {
   );
 });
 
+describe('recent form', () => {
+  it(
+    'sends the last results and win streak of each player with battle:start and saves them for restarts',
+    async () => {
+      const problem = await Problem.create(problemDoc('Form Problem', 'Easy'));
+      const a = await register('formA');
+      const b = await register('formB');
+      const past = (minutesAgo, winner) =>
+        Match.create({
+          problem: problem._id,
+          players: [
+            { user: a.userId, ratingBefore: 1000 },
+            { user: b.userId, ratingBefore: 1000 },
+          ],
+          status: 'completed',
+          winner,
+          durationMs: 1000,
+          startedAt: new Date(Date.now() - minutesAgo * 60_000 - 1000),
+          endedAt: new Date(Date.now() - minutesAgo * 60_000),
+        });
+      await past(30, b.userId);
+      await past(20, a.userId);
+      await past(10, a.userId);
+
+      const sa = await connect(a.token);
+      const sb = await connect(b.token);
+      const started = once(sa, 'battle:start');
+      sa.emit('matchmaking:join');
+      sb.emit('matchmaking:join');
+      const start = await started;
+
+      const byName = Object.fromEntries(start.players.map((p) => [p.username, p]));
+      expect(byName.formA).toMatchObject({ form: ['L', 'W', 'W'], streak: 2 });
+      expect(byName.formB).toMatchObject({ form: ['W', 'L', 'L'], streak: 0 });
+      const saved = await ActiveRoom.findOne({ roomCode: start.roomCode });
+      expect(saved.players.find((p) => p.username === 'formA').streak).toBe(2);
+    },
+    20000
+  );
+});
+
 describe('blitz mode', () => {
   it(
     'pairs only blitz players, uses an Easy problem and a 5 minute clock, and saves the mode',

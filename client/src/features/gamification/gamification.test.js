@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { diffCallouts } from './callouts';
+import { streakLabel, formLabel } from './form';
 
 const p = (passedCount, totalCount = 10) => ({ passedCount, totalCount });
 const state = (self, opponent, remainingMs = 600_000) => ({ self, opponent, remainingMs });
@@ -34,5 +35,18 @@ describe('battle callouts', () => {
     expect(titles(diffCallouts(state(null, null, 61_000), state(null, null, 60_000)))).toEqual(['One minute left.']);
     expect(diffCallouts(state(null, null, 60_000), state(null, null, 59_000))).toEqual([]);
     expect(diffCallouts(state(null, null, 61_000), state(null, null, 0))).toEqual([]);
+  });
+});
+
+describe('form strip text', () => {
+  it('calls out a streak from three wins', () => {
+    expect(streakLabel(2)).toBeNull();
+    expect(streakLabel(3)).toBe('3 wins in a row');
+    expect(streakLabel()).toBeNull();
+  });
+
+  it('reads the form oldest first for screen readers', () => {
+    expect(formLabel('rival', ['L', 'W', 'D'])).toBe('rival, last 3: lost, won, drew');
+    expect(formLabel('rival', [])).toBe('');
   });
 });

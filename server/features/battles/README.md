@@ -50,6 +50,9 @@ used there is missing here.
   problem of that difficulty is seen, any problem of that difficulty; if the
   bank has none of that difficulty, any problem.
 - The first `Accepted` wins. On timeout, more passed cases wins, then the earlier submission.
+- `battle:start` and `battle:resume` players carry `form` (last 5
+  results, oldest first) and `streak` (current win streak), from
+  `features/gamification/form.service.js`. Empty in the lobby.
 - `battle:end` carries a summary per player: `attempts` (submissions) and
   `timeMs` (time of the best submission, `null` if none). Never code.
 - A disconnected player has 20 s to come back, then forfeits. If both are
