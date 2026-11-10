@@ -6,6 +6,7 @@ import BattleReplay from './BattleReplay.model.js';
 import User from '../auth/User.model.js';
 import PerformanceHistory from '../skills/PerformanceHistory.model.js';
 import { calculateRatings } from './rating.service.js';
+import { getRecentForm } from '../gamification/form.service.js';
 import { getIO } from '../../core/io.js';
 import {
   matchmakingQueue,
@@ -61,8 +62,17 @@ function emitToPlayer(player, event, data) {
   if (player?.socketId) getIO().to(player.socketId).emit(event, data);
 }
 
+// `form` (last results, oldest first) and `streak` are filled in when the
+// battle starts; empty in the lobby.
 function toPublicPlayer(player) {
-  return { userId: player.userId, username: player.username, rating: player.rating, ready: !!player.ready };
+  return {
+    userId: player.userId,
+    username: player.username,
+    rating: player.rating,
+    ready: !!player.ready,
+    form: player.form ?? [],
+    streak: player.streak ?? 0,
+  };
 }
 
 function publicResults(room) {
@@ -114,7 +124,13 @@ async function persistRoom(room) {
       {
         roomCode: room.roomCode,
         mode: room.mode,
-        players: room.players.map((p) => ({ userId: p.userId, username: p.username, rating: p.rating })),
+        players: room.players.map((p) => ({
+          userId: p.userId,
+          username: p.username,
+          rating: p.rating,
+          form: p.form ?? [],
+          streak: p.streak ?? 0,
+        })),
         problem: room.problem._id,
         matchId: room.matchId,
         startedAt: new Date(room.startedAt),
@@ -341,6 +357,12 @@ async function startBattle(roomCode) {
   try {
     const difficulty = MODES[room.mode].difficulty ?? difficultyForRatings(room.players.map((p) => p.rating));
     const problem = await pickProblem(difficulty, room.players.map((p) => p.userId));
+    // Form is decoration: a failed lookup starts the battle without it.
+    const forms = await getRecentForm(room.players.map((p) => p.userId)).catch((err) => {
+      logger.error(`[Battle] Form lookup failed for room ${roomCode}: ${err.message}`);
+      return {};
+    });
+    for (const p of room.players) Object.assign(p, forms[p.userId] ?? { form: [], streak: 0 });
     logger.info(`[Battle] "${problem.title}" (${problem.difficulty}, wanted ${difficulty}) for room ${roomCode}`);
 
     const match = await Match.create({

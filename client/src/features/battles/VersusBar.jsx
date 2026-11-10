@@ -1,6 +1,7 @@
 import { WifiOff } from 'lucide-react';
 import { formatClock, formatNumber } from '../../shared/format';
 import Pips from '../../shared/ui/Pips';
+import FormStrip from '../gamification/FormStrip';
 import { clockFraction, LOW_TIME_MS } from './battleState';
 
 function Side({ player, progress, side, note }) {
@@ -13,6 +14,7 @@ function Side({ player, progress, side, note }) {
         </span>
         {player && <span className="font-tight text-base font-semibold text-muted">{formatNumber(player.rating)}</span>}
       </div>
+      <FormStrip name={player?.username ?? 'Opponent'} form={player?.form} streak={player?.streak} side={side} />
       <div className={`flex items-center gap-2 ${isYou ? '' : 'flex-row-reverse'}`}>
         {progress?.totalCount ? (
           <>
