@@ -9,7 +9,7 @@ The skill profile page.
 | `SkillDashboardPage.jsx` | Radar, weakest and strongest topics, CodeArena problems to practice, LeetCode suggestions (`leetcode/LeetCodePractice`), topic levels, coach notes. |
 | `SkillRadar.jsx` | Hand-drawn SVG radar (needs 3+ topics). |
 | `skills.js` | `weakTopics`, `strongTopics`, `xpPercent`. Thresholds match the server. |
-| `skillService.js` | `/skills/me`, `/skills/xp`, `/skills/recommendations`, `/skills/feedback`. |
+| `skillService.js` | `/skills/me`, `/skills/xp` (topic XP, `arenaXp`, `overall`), `/skills/recommendations`, `/skills/feedback`. |
 | `skills.test.js` | Service contract and helper tests. |
 
 ## Manual test cases

@@ -7,6 +7,7 @@ import User from '../auth/User.model.js';
 import PerformanceHistory from '../skills/PerformanceHistory.model.js';
 import { calculateRatings } from './rating.service.js';
 import { getRecentForm } from '../gamification/form.service.js';
+import { awardArenaXp } from '../gamification/arenaXp.service.js';
 import { getIO } from '../../core/io.js';
 import {
   matchmakingQueue,
@@ -558,6 +559,24 @@ async function endBattle(roomCode, { forcedWinnerId = null } = {}) {
     await ActiveRoom.deleteOne({ roomCode });
   }
 
+  const xp = await awardArenaXp(
+    room.matchId,
+    room.players.map((p) => {
+      const r = room.results[p.userId];
+      return {
+        userId: p.userId,
+        won: p.userId === winnerId,
+        isDraw,
+        verdict: r?.verdict ?? null,
+        attempts: room.timeline.filter((e) => e.userId === p.userId).length,
+        timeMs: r?.submittedAt ? r.submittedAt.getTime() - room.startedAt : null,
+        durationMs: room.durationMs,
+        ratingBefore: p.rating,
+        opponentRating: room.players.find((o) => o.userId !== p.userId).rating,
+      };
+    })
+  );
+
   const payload = {
     roomCode,
     matchId: room.matchId,
@@ -572,6 +591,7 @@ async function endBattle(roomCode, { forcedWinnerId = null } = {}) {
       timeMs: room.results[p.userId]?.submittedAt ? room.results[p.userId].submittedAt.getTime() - room.startedAt : null,
       ratingBefore: p.rating,
       ratingAfter: newRatings[p.userId],
+      xp: xp[p.userId] ?? null,
     })),
   };
   getIO().to(roomCode).to(watchChannel(roomCode)).emit('battle:end', payload);

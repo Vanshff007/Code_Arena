@@ -3,6 +3,9 @@ import mongoose from 'mongoose';
 import Match from '../battles/Match.model.js';
 import Problem from '../problems/Problem.model.js';
 import { formFromMatches, getRecentForm, FORM_LENGTH } from './form.service.js';
+import { arenaXpBreakdown, awardArenaXp, getOverallXp, UPSET_GAP } from './arenaXp.service.js';
+import ArenaXP from './ArenaXP.model.js';
+import XPProgress from '../skills/XPProgress.model.js';
 
 const me = new mongoose.Types.ObjectId();
 const other = new mongoose.Types.ObjectId();
@@ -68,5 +71,69 @@ describe('getRecentForm', () => {
     const forms = await getRecentForm([String(me), String(other)]);
     expect(forms[String(me)]).toEqual({ form: ['L', 'W', 'W'], streak: 2 });
     expect(forms[String(other)]).toEqual({ form: ['W', 'L', 'L'], streak: 0 });
+  });
+});
+
+describe('arenaXpBreakdown', () => {
+  const base = { won: false, isDraw: false, verdict: null, attempts: 0, timeMs: null, durationMs: 1000, ratingBefore: 1000, opponentRating: 1000 };
+  const keys = (p) => arenaXpBreakdown({ ...base, ...p }).map((i) => i.key);
+
+  it('gives a loss with no solve only the played XP', () => {
+    expect(arenaXpBreakdown(base)).toEqual([{ key: 'played', label: 'Battle played', xp: 10 }]);
+  });
+
+  it('adds win, solved, speed and first try for a fast first-try win', () => {
+    const items = arenaXpBreakdown({ ...base, won: true, verdict: 'Accepted', attempts: 1, timeMs: 250 });
+    expect(items.map((i) => i.key)).toEqual(['played', 'win', 'solved', 'speed', 'firstTry']);
+    expect(items.find((i) => i.key === 'speed').xp).toBe(15);
+  });
+
+  it('gives no speed XP at the buzzer and no first try after several attempts', () => {
+    expect(keys({ won: true, verdict: 'Accepted', attempts: 3, timeMs: 1000 })).toEqual(['played', 'win', 'solved']);
+  });
+
+  it('gives draw XP on a draw', () => {
+    expect(keys({ isDraw: true })).toEqual(['played', 'draw']);
+  });
+
+  it('adds an upset bonus only for a win against a much higher rating', () => {
+    expect(keys({ won: true, opponentRating: 1000 + UPSET_GAP })).toContain('upset');
+    expect(keys({ won: true, opponentRating: 1000 + UPSET_GAP - 1 })).not.toContain('upset');
+    expect(keys({ opponentRating: 2000 })).not.toContain('upset');
+  });
+});
+
+describe('awardArenaXp and getOverallXp', () => {
+  beforeAll(async () => {
+    await mongoose.connect(process.env.MONGO_URI);
+  });
+  afterAll(async () => {
+    await mongoose.connection.close();
+  });
+  beforeEach(async () => {
+    await Promise.all([ArenaXP.deleteMany({}), XPProgress.deleteMany({})]);
+  });
+
+  const player = { userId: String(me), won: true, isDraw: false, verdict: null, attempts: 0, timeMs: null, durationMs: 1000, ratingBefore: 1000, opponentRating: 1000 };
+
+  it('saves one entry per match, even when awarded twice', async () => {
+    const match = new mongoose.Types.ObjectId();
+    const first = await awardArenaXp(match, [player]);
+    expect(first[String(me)].gained).toBe(40);
+    await awardArenaXp(match, [player]);
+    expect(await ArenaXP.countDocuments({ user: me })).toBe(1);
+  });
+
+  it('skips a battle with no match id', async () => {
+    expect(await awardArenaXp(null, [player])).toEqual({});
+    expect(await ArenaXP.countDocuments()).toBe(0);
+  });
+
+  it('adds topic XP and arena XP into the overall level', async () => {
+    await XPProgress.create({ user: me, topic: 'Graphs', xp: 70 });
+    await awardArenaXp(new mongoose.Types.ObjectId(), [player]);
+    const { arenaXp, overall } = await getOverallXp(me);
+    expect(arenaXp).toBe(40);
+    expect(overall).toMatchObject({ level: 2, xp: 110, xpIntoLevel: 10 });
   });
 });

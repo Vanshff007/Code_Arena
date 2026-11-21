@@ -3,6 +3,7 @@ import XPProgress from './XPProgress.model.js';
 import AIFeedbackHistory from './AIFeedbackHistory.model.js';
 import { getRecommendedProblems } from './recommendation.service.js';
 import { xpProgressWithinLevel } from './xp.service.js';
+import { getOverallXp } from '../gamification/arenaXp.service.js';
 
 // GET /api/skills/me - the Skill Radar data source.
 export const getMySkillProfile = async (req, res, next) => {
@@ -18,12 +19,14 @@ export const getMySkillProfile = async (req, res, next) => {
   }
 };
 
-// GET /api/skills/xp - per-topic XP + derived level for the Topic XP display.
+// GET /api/skills/xp - per-topic XP + derived level, plus arena XP and the
+// overall level (topic XP + arena XP).
 export const getMyXP = async (req, res, next) => {
   try {
     const records = await XPProgress.find({ user: req.user._id }).sort('-xp');
     const xp = records.map((r) => ({ topic: r.topic, ...xpProgressWithinLevel(r.xp) }));
-    return res.status(200).json({ success: true, data: { xp } });
+    const { arenaXp, overall } = await getOverallXp(req.user._id);
+    return res.status(200).json({ success: true, data: { xp, arenaXp, overall } });
   } catch (err) {
     next(err);
   }

@@ -9,6 +9,7 @@ import VersusBar from './VersusBar';
 import BattleChat from './BattleChat';
 import BattleCallouts from '../gamification/BattleCallouts';
 import PromotionPanel from '../gamification/PromotionPanel';
+import ArenaXpPanel from '../gamification/ArenaXpPanel';
 import ProblemStatement from '../problems/ProblemStatement';
 import EditorialPanel from '../problems/EditorialPanel';
 import CodeWorkspace from '../execution/CodeWorkspace';
@@ -441,6 +442,7 @@ function Result({ result, userId, problem, socket, roomCode }) {
       </h1>
 
       {you && <PromotionPanel ratingBefore={you.ratingBefore} ratingAfter={you.ratingAfter} />}
+      {you && <ArenaXpPanel xp={you.xp} />}
 
       <div className="mt-10 grid gap-px border border-rule bg-rule sm:grid-cols-2">
         {[
