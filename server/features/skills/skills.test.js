@@ -200,6 +200,8 @@ describe('skills API', () => {
     expect(first.topic).toBe('Graphs');
     expect(first.level).toBeGreaterThan(1);
     expect(second.level).toBe(1);
+    expect(res.body.data.arenaXp).toBe(0);
+    expect(res.body.data.overall.xp).toBe(res.body.data.xp.reduce((n, t) => n + t.xp, 0));
   });
 
   it('returns recommendations and feedback lists', async () => {

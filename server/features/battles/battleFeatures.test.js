@@ -20,6 +20,7 @@ import Match from './Match.model.js';
 import ActiveRoom from './ActiveRoom.model.js';
 import BattleReplay from './BattleReplay.model.js';
 import PerformanceHistory from '../skills/PerformanceHistory.model.js';
+import ArenaXP from '../gamification/ArenaXP.model.js';
 
 let server;
 let port;
@@ -47,6 +48,7 @@ beforeEach(async () => {
     ActiveRoom.deleteMany({}),
     BattleReplay.deleteMany({}),
     PerformanceHistory.deleteMany({}),
+    ArenaXP.deleteMany({}),
   ]);
 });
 
@@ -289,6 +291,10 @@ describe('restart-safe battles and replays', () => {
       expect(mineEnd.attempts).toBe(1);
       expect(mineEnd.timeMs).toBeGreaterThanOrEqual(0);
       expect(theirsEnd).toMatchObject({ attempts: 0, timeMs: null });
+      // Arena XP: winner solved on the first try, loser only played.
+      expect(mineEnd.xp.items.map((i) => i.key)).toEqual(expect.arrayContaining(['played', 'win', 'solved', 'firstTry']));
+      expect(theirsEnd.xp).toMatchObject({ gained: 10, overall: { xp: 10 } });
+      expect(await ArenaXP.countDocuments({ match: end.matchId })).toBe(2);
       expect(JSON.stringify(end)).not.toMatch(/print\(/);
       expect(await ActiveRoom.countDocuments()).toBe(0);
 

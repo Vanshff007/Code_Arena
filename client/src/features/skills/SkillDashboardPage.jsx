@@ -33,6 +33,8 @@ function SkillDashboardPage() {
         setData({
           scores: skillRes.data.topicScores,
           xp: xpRes.data.xp,
+          arenaXp: xpRes.data.arenaXp ?? 0,
+          overall: xpRes.data.overall,
           recommendations: recRes.data,
           feedback: feedbackRes.data.feedback,
         })
@@ -49,7 +51,7 @@ function SkillDashboardPage() {
   }
   if (!data) return <PageSpinner label="Loading skill profile" />;
 
-  const { scores, xp, recommendations, feedback } = data;
+  const { scores, xp, arenaXp, overall, recommendations, feedback } = data;
   const weak = weakTopics(scores);
   const strong = strongTopics(scores);
 
@@ -118,6 +120,23 @@ function SkillDashboardPage() {
       <div className="grid gap-10 lg:grid-cols-2">
         <section>
           <SectionTitle>Topic levels</SectionTitle>
+          {overall && (
+            <div className="mb-6 border-b border-rule pb-4">
+              <div className="flex items-baseline justify-between gap-4">
+                <span className="font-semibold">Overall</span>
+                <span className="text-sm text-muted">
+                  Level <span className="font-tight text-2xl font-black text-ink">{overall.level}</span>
+                </span>
+              </div>
+              <div className="mt-1 h-1.5 bg-sunk">
+                <div className="h-full bg-p1" style={{ width: `${xpPercent(overall)}%` }} />
+              </div>
+              <p className="mt-1 text-xs text-muted">
+                {overall.xpIntoLevel} of {overall.xpForNextLevel} XP to level {overall.level + 1}. Topic XP plus{' '}
+                {arenaXp} arena XP from battles.
+              </p>
+            </div>
+          )}
           {xp.length === 0 ? (
             <p className="text-sm text-muted">An accepted submission earns XP in each of the problem's topics.</p>
           ) : (

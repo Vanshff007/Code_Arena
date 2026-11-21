@@ -54,7 +54,8 @@ used there is missing here.
   results, oldest first) and `streak` (current win streak), from
   `features/gamification/form.service.js`. Empty in the lobby.
 - `battle:end` carries a summary per player: `attempts` (submissions) and
-  `timeMs` (time of the best submission, `null` if none). Never code.
+  `timeMs` (time of the best submission, `null` if none), and `xp` (arena
+  XP from `features/gamification/arenaXp.service.js`). Never code.
 - A disconnected player has 20 s to come back, then forfeits. If both are
   gone, the clock decides.
 - In-progress battles are written to `ActiveRoom` on start, on each

@@ -3,6 +3,7 @@
 Game-feel layers on top of battles and ratings. Phase A: tier promotion
 and live battle callouts (client only). Phase B: recent form and win
 streak in the versus bar (data from `server/features/gamification`).
+Phase C: arena XP breakdown on the battle result.
 
 ## Files
 
@@ -13,6 +14,7 @@ streak in the versus bar (data from `server/features/gamification`).
 | `PromotionPanel.jsx` | Battle result: a promotion panel when the rating change crossed a tier line upward, one quiet line when it dropped. |
 | `form.js` | `streakLabel(streak)` ("4 wins in a row" from 3 up) and `formLabel(name, form)` for screen readers. |
 | `FormStrip.jsx` | Last results under a name in the versus bar, oldest first: a win filled in that player's color, a loss hollow, a draw grey, plus the streak label. Hidden when there is no history. |
+| `ArenaXpPanel.jsx` | Battle result: "+N XP", one line per XP item, and the overall level bar. Hidden when `xp` is `null`. |
 | `gamification.test.js` | Callout rules, streak and form labels. Tier helpers are tested in `shared/shared.test.js`. |
 
 ## Behavior
